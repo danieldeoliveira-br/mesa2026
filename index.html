@@ -1,0 +1,569 @@
+!DOCTYPE html
+html lang=pt-BR
+head
+    meta charset=UTF-8
+    meta name=viewport content=width=device-width, initial-scale=1.0
+    titleApuração Mesa 2026 - Ao Vivotitle
+    script src=httpscdn.tailwindcss.comscript
+    link href=httpscdnjs.cloudflare.comajaxlibsfont-awesome6.0.0cssall.min.css rel=stylesheet
+    
+    !-- Firebase App (Compat version 8) --
+    script src=httpswww.gstatic.comfirebasejs8.10.1firebase-app.jsscript
+    !-- Firebase Realtime Database (Compat version 8) --
+    script src=httpswww.gstatic.comfirebasejs8.10.1firebase-database.jsscript
+
+    style
+        @import url('httpsfonts.googleapis.comcss2family=Interwght@300;400;600;700;900&display=swap');
+        
+         Estilos Gerais 
+        body { font-family 'Inter', sans-serif; background-color #f1f5f9; }
+        .card { background white; border-radius 16px; box-shadow 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+        
+         Controle de Visibilidade AdminPublic 
+        .admin-only { display none; } 
+        .show-admin .admin-only { display block; }
+        .show-admin .public-only { display none; }
+        
+         Animações 
+        .animate-pulse-fast { animation pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        @keyframes fadeIn { from { opacity 0; } to { opacity 1; } }
+        .fade-in { animation fadeIn 0.5s ease-out; }
+
+         IMPRESSÃO DA ATA 
+        @media print {
+            @page { margin 1.5cm; size A4; }
+            body { background white; color black; -webkit-print-color-adjust exact; }
+            header, aside, #view-publica, #view-admin, #view-resultado, .no-print { display none !important; }
+            
+             Força exibição da ata mesmo se estiver oculta na tela 
+            #tela-final { 
+                display block !important;
+                position static !important;
+                width 100% !important;
+                height auto !important;
+                overflow visible !important;
+                border none !important;
+                box-shadow none !important;
+            }
+            
+            main { padding 0 !important; margin 0 !important; height auto !important; display block !important; }
+            section { width 100% !important; height auto !important; }
+
+             Tabela 
+            .tabela-ata { width 100%; border-collapse collapse; margin-top 20px; font-size 12pt; }
+            .tabela-ata th { background-color #e2e8f0 !important; border 1px solid #000; padding 8px; text-align left; font-weight bold; }
+            .tabela-ata td { border 1px solid #000; padding 8px; }
+            
+             Assinaturas 
+            .assinaturas { margin-top 50px; display flex; justify-content space-between; page-break-inside avoid; }
+            .assinatura-box { border-top 1px solid #000; width 40%; text-align center; padding-top 5px; font-size 10pt; }
+        }
+    style
+head
+body class=h-screen flex flex-col overflow-hidden text-slate-800
+
+    !-- Integração Firebase --
+    script
+         CONFIGURAÇÃO DO FIREBASE (JÁ ADAPTADA PARA O SEU PROJETO)
+        const firebaseConfig = {
+          apiKey AIzaSyA4bHOm0cNf57AKBb7ChGbIMPJdwEe06Jk,
+          authDomain mesaespumoso2026.firebaseapp.com,
+          databaseURL httpsmesaespumoso2026-default-rtdb.firebaseio.com, 
+          projectId mesaespumoso2026,
+          storageBucket mesaespumoso2026.firebasestorage.app,
+          messagingSenderId 549506281878,
+          appId 1549506281878web381ea223d34b5620102db7
+        };
+
+         Inicializa e cria referência global
+        try {
+            firebase.initializeApp(firebaseConfig);
+            var dbRef = firebase.database().ref('mesa2026');
+        } catch(e) {
+            console.error(Erro Firebase, e);
+            alert(Erro de conexão com o banco de dados.);
+        }
+    script
+
+    !-- Topo --
+    header class=bg-white border-b border-slate-200 h-16 z-20 shadow-sm flex-shrink-0
+        div class=container mx-auto h-full flex justify-between items-center px-4
+            div class=flex items-center gap-3
+                div class=bg-blue-800 text-white font-black px-2 py-1 rounded text-lgMD26div
+                div
+                    h1 class=font-bold text-slate-800 leading-noneApuração Ao Vivoh1
+                    p class=text-[10px] text-slate-500 uppercase font-boldCâmara de Espumosop
+                div
+            div
+            div class=flex items-center gap-3
+                div class=hidden mdflex items-center gap-2 bg-slate-100 px-3 py-1 rounded-full text-xs font-bold text-slate-600
+                    span class=w-2 h-2 bg-green-500 rounded-full animate-pulse-fastspan Conectado
+                div
+                button onclick=loginAdmin() id=btn-login class=text-xs text-slate-400 hovertext-blue-600 underline no-print
+                    Acesso Restrito
+                button
+            div
+        div
+    header
+
+    main class=flex-grow container mx-auto p-4 flex flex-col mdflex-row gap-6 h-[calc(100vh-64px)] overflow-hidden
+        
+        !-- COLUNA PRINCIPAL (VotaçãoResultado) --
+        section class=w-full mdw-23 flex flex-col h-full overflow-y-auto pb-10 pr-2
+            
+            !-- Painel de Status (Sempre Visível) --
+            div class=mb-6 no-print
+                div class=flex justify-between items-end
+                    div
+                        span class=text-xs font-bold text-blue-600 uppercase tracking-widestCargo em Disputaspan
+                        h2 id=titulo-cargo class=text-3xl mdtext-4xl font-black text-slate-900 mt-1Aguardando...h2
+                    div
+                    div id=status-badge class=bg-slate-200 text-slate-600 text-xs font-bold px-3 py-1 rounded-full
+                        Offline
+                    div
+                div
+                div class=w-full bg-slate-200 h-2 rounded-full mt-4 overflow-hidden
+                    div id=barra-progresso class=bg-blue-600 h-full transition-all duration-500 style=width 0%div
+                div
+            div
+
+            !-- MODO PÚBLICO Tela de Espera --
+            div id=view-publica class=card p-8 border-t-4 border-blue-500 flex-grow flex items-center justify-center text-center public-only no-print
+                div
+                    div class=mb-4 text-slate-300i class=fa-solid fa-tv text-6xlidiv
+                    h3 class=text-xl font-bold text-slate-700Painel de Acompanhamentoh3
+                    p class=text-slate-500 text-sm mt-2Acompanhe a votação em tempo real.p
+                    div class=mt-8 p-4 bg-blue-50 rounded-lg border border-blue-100 text-blue-800 text-sm
+                        strongStatusstrong span id=msg-publicaConectando...span
+                    div
+                div
+            div
+
+            !-- MODO ADMIN Painel de Controle --
+            div id=view-admin class=card p-6 border-t-4 border-red-500 admin-only flex-col gap-4 hidden no-print
+                div class=bg-red-50 p-3 rounded border border-red-100 text-red-800 text-xs font-bold mb-4 flex justify-between items-center
+                    spani class=fa-solid fa-lock mr-2i PAINEL ADMINspan
+                    button onclick=resetarSistema() class=underline hovertext-red-950Zerar Tudobutton
+                div
+
+                !-- Seleção de Cargo --
+                div class=grid grid-cols-2 gap-2 mb-2
+                    button onclick=setCargo(0) class=bg-slate-100 hoverbg-slate-200 p-2 rounded text-[10px] font-bold uppercasePresidentebutton
+                    button onclick=setCargo(1) class=bg-slate-100 hoverbg-slate-200 p-2 rounded text-[10px] font-bold uppercaseVice-Presbutton
+                    button onclick=setCargo(2) class=bg-slate-100 hoverbg-slate-200 p-2 rounded text-[10px] font-bold uppercaseSec. Geralbutton
+                    button onclick=setCargo(3) class=bg-slate-100 hoverbg-slate-200 p-2 rounded text-[10px] font-bold uppercaseSec. Adjuntobutton
+                div
+
+                p class=text-sm font-bold text-slate-700 mt-2 mb-2Registrar Votop
+                div id=grid-botoes-admin class=grid grid-cols-2 gap-3
+                    !-- Botões gerados via JS --
+                div
+                
+                div class=flex gap-3 mt-6
+                    button onclick=enviarVoto('NULO') class=flex-1 bg-slate-200 hoverbg-slate-300 font-bold py-3 roundedBRANCO  NULObutton
+                    button onclick=removerUltimoVoto() class=flex-1 bg-red-100 text-red-700 hoverbg-red-200 font-bold py-3 roundedDESFAZERbutton
+                div
+                
+                div class=mt-4 pt-4 border-t border-slate-200 text-center
+                    button onclick=gerarRelatorioFinal() class=text-blue-600 text-sm font-bold hoverunderline
+                        i class=fa-solid fa-file-lines mr-1i VerImprimir Ata Final
+                    button
+                div
+            div
+
+            !-- TELA DE RESULTADO (Vencedor) --
+            div id=view-resultado class=hidden card p-10 text-center border-t-4 border-green-500 fade-in mt-4 no-print
+                div class=inline-block p-4 rounded-full bg-green-100 text-green-600 mb-4 text-3xl
+                    i class=fa-solid fa-checki
+                div
+                h2 class=text-2xl font-bold text-slate-800Eleitoh2
+                h1 id=res-vencedor class=text-4xl mdtext-5xl font-black text-slate-900 my-2Nomeh1
+                p id=res-detalhe class=text-slate-500 text-sm font-mediumDetalhep
+                
+                div id=area-detalhe-empate class=hidden mt-6 pt-6 border-t border-slate-100 text-left bg-slate-50 p-4 rounded-lg
+                    p class=text-xs font-bold text-slate-400 uppercase mb-2Desempate (Art. 33 §2º - Idade)p
+                    div id=lista-desempate class=space-y-1 text-smdiv
+                div
+            div
+
+            !-- ATA FINAL (Impressão) --
+            div id=tela-final class=hidden card p-8 fade-in mt-4 bg-white
+                div class=ata-header
+                    div class=ata-logoCâmara Municipal de Vereadores de EspumosoRSdiv
+                    div class=ata-subEstado do Rio Grande do Suldiv
+                    h2 class=text-xl font-bold mt-6 uppercaseAta de Apuração Eletrônicah2
+                    p class=text-sm mt-1Eleição da Mesa Diretora - Exercício 2026p
+                    p class=text-xs text-slate-500 mt-2 id=data-impressaop
+                div
+
+                table class=tabela-ata mt-6
+                    thead
+                        tr
+                            th width=25%CARGOth
+                            th width=30%ELEITOth
+                            th width=15%VOTOSth
+                            th width=30%OBSERVAÇÃOth
+                        tr
+                    thead
+                    tbody id=corpo-tabela-ata
+                        !-- Linhas da Ata --
+                    tbody
+                table
+
+                div class=assinaturas hidden printflex
+                    div class=assinatura-box
+                        _______________________________________brbPresidente da Sessãob
+                    div
+                    div class=assinatura-box
+                        _______________________________________brbSecretário Geralb
+                    div
+                div
+                
+                div class=mt-6 text-right no-print
+                    button onclick=window.print() class=bg-slate-800 text-white px-6 py-2 rounded hoverbg-slate-700 font-bold text-sm
+                        i class=fa-solid fa-print mr-2i Imprimir Agora
+                    button
+                    button onclick=fecharAta() class=ml-4 text-slate-500 hovertext-slate-800 text-sm underlineVoltarbutton
+                div
+            div
+
+        section
+
+        !-- COLUNA LATERAL (Placar) --
+        aside class=w-full mdw-13 flex flex-col gap-4 h-full pb-10 no-print
+            div class=card p-5 flex-grow flex flex-col shadow-sm border-t-4 border-yellow-400
+                div class=flex justify-between items-center mb-4 pb-2 border-b border-slate-100
+                    h3 class=font-bold text-slate-700 uppercase text-smPlacar em Tempo Realh3
+                    span class=text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-1 roundedAO VIVOspan
+                div
+                div id=lista-placar class=flex-grow space-y-3 overflow-y-auto
+                    !-- Barras --
+                div
+                div id=box-empate class=hidden mt-4 bg-amber-50 border border-amber-200 rounded-lg p-3 animate-pulse
+                    div class=flex gap-3 items-center
+                        i class=fa-solid fa-scale-balanced text-amber-600i
+                        div
+                            h4 class=text-xs font-bold text-amber-800Empate Parcialh4
+                            p class=text-[10px] text-amber-700Critério de idade será aplicado ao final.p
+                        div
+                    div
+                div
+            div
+            
+            div class=card p-4 h-13 overflow-y-auto bg-slate-50 border border-slate-200
+                h3 class=font-bold text-slate-400 text-xs uppercase mb-3Cargos Definidosh3
+                div id=lista-historico class=space-y-2 text-smdiv
+            div
+        aside
+
+    main
+
+    script
+         --- DADOS DOS VEREADORES (CARGOS ATUAIS DE 2025 PARA REGRA DE 2026) ---
+         0=Nenhum, 1=Pres, 2=Vice, 3=Geral, 4=Adjunto
+        const VEREADORES = [
+            {id 1, nome Dayana Soares (PDT), nasc 1979-06-08, cargo_atual 4},  Atual Adjunta
+            {id 2, nome Denner Senhor (PL), nasc 1983-02-26, cargo_atual 3},   Atual Geral
+            {id 3, nome Eduardo Signor (UB), nasc 1994-12-23, cargo_atual 0},
+            {id 4, nome Fabiana Otoni (PP), nasc 1982-02-12, cargo_atual 0},
+            {id 5, nome Leandro Colleraus (PDT), nasc 1979-03-05, cargo_atual 0},
+            {id 6, nome Paulo Flores (PDT), nasc 1969-05-18, cargo_atual 2},  Atual Vice
+            {id 7, nome Tomas Fiuza (PP), nasc 1989-10-17, cargo_atual 1},  Atual Presidente
+        ];
+        const CARGOS = [PRESIDENTE, VICE-PRESIDENTE, SECRETÁRIO GERAL, SECRETÁRIO ADJUNTO];
+
+         --- UTILITÁRIOS ---
+        function calcularDiasVida(s) { return new Date(s).getTime(); }
+        function formatarData(s) { const [a,m,d] = s.split('-'); return `${d}${m}${a}`; }
+        function getTextoIdade(s) {
+            const hj = new Date(); const ns = new Date(s);
+            let an = hj.getFullYear() - ns.getFullYear();
+            const m = hj.getMonth() - ns.getMonth();
+            if (m  0  (m===0 && hj.getDate()  ns.getDate())) an--;
+            return `${an} anos`;
+        }
+
+         --- LÓGICA DE ELEGIBILIDADE (REGRAS RÍGIDAS) ---
+        function isElegivel(vereador, indiceCargoDisputa) {
+             Hierarquia dos cargos (1=Pres, 2=Vice, 3=Geral, 4=Adjunto)
+            const cargoAlvo = indiceCargoDisputa + 1; 
+            const cargoAtual = vereador.cargo_atual;
+
+             Regra 1 Se não tem cargo atual (0), é elegível
+            if (cargoAtual === 0) return true;
+
+             Regra 2 Não pode mesmo cargo (Reeleição)
+            if (cargoAtual === cargoAlvo) return false;
+
+             Regra 3 Não pode cargo inferior
+            if (cargoAlvo  cargoAtual) return false;
+
+            return true;
+        }
+
+         --- ESTADO LOCAL ---
+        let localState = { isAdmin false, dados {} };
+
+         --- INICIALIZAÇÃO ---
+        dbRef.on('value', (snapshot) = {
+            const data = snapshot.val()  { indiceCargo 0, votos [], historico {}, status 'votando' };
+            localState.dados = data;
+            renderizarTela(data);
+        });
+
+         --- LÓGICA DE ADMIN ---
+        function loginAdmin() {
+            const senha = prompt(Senha de Administrador);
+            if (senha === mesa2026) {
+                localState.isAdmin = true;
+                document.body.classList.add('show-admin');
+                document.getElementById('view-admin').classList.remove('hidden');
+                document.getElementById('btn-login').innerHTML = 'i class=fa-solid fa-user-shieldi Admin';
+                document.getElementById('btn-login').classList.add('text-red-600', 'font-bold');
+            } else {
+                alert(Senha incorreta.);
+            }
+        }
+
+        function setCargo(index) {
+            if(!localState.isAdmin) return;
+            if(confirm(`Iniciar votação para ${CARGOS[index]} Votos atuais serão limpos.`)) {
+                dbRef.update({ indiceCargo index, votos [], status 'votando' });
+            }
+        }
+
+        function enviarVoto(nome) {
+            if(!localState.isAdmin) return;
+            const votos = localState.dados.votos  [];
+            if(votos.length = 9) return alert(Votação encerrada (9 votos).);
+            
+            const novosVotos = [...votos, nome];
+            const updates = { votos novosVotos };
+            
+             Verifica se encerrou
+            if(novosVotos.length === 9) {
+                updates.status = 'encerrado';
+                 Calcula vencedor e salva no histórico
+                const res = calcularVencedorLocal(novosVotos, localState.dados.indiceCargo);
+                const hist = localState.dados.historico  {};
+                hist[CARGOS[localState.dados.indiceCargo]] = res;
+                updates.historico = hist;
+            }
+            
+            dbRef.update(updates);
+        }
+
+        function removerUltimoVoto() {
+            if(!localState.isAdmin) return;
+            const votos = localState.dados.votos  [];
+            if(votos.length  0) {
+                votos.pop();
+                 Se removeu o 9º voto, reabre a votação e remove do histórico
+                let updates = { votos votos, status 'votando' };
+                if (localState.dados.status === 'encerrado') {
+                    const hist = localState.dados.historico  {};
+                    delete hist[CARGOS[localState.dados.indiceCargo]];
+                    updates.historico = hist;
+                }
+                dbRef.update(updates);
+            }
+        }
+
+        function resetarSistema() {
+            if(!localState.isAdmin) return;
+            if(confirm(ZERAR TUDO Isso apaga todos os resultados.)) {
+                dbRef.set({ indiceCargo 0, votos [], historico {}, status 'votando' });
+            }
+        }
+
+         --- LÓGICA DE CÁLCULO ---
+        function calcularVencedorLocal(votos, indiceCargo) {
+            if (!votos  votos.length === 0) return null;
+            const contagem = {};
+            votos.forEach(v = contagem[v] = (contagem[v]0)+1);
+            const ord = Object.entries(contagem).sort((a,b) = b[1] - a[1]);
+            const prim = ord[0];
+            const emp = ord.filter(i = i[1] === prim[1]);
+
+            let venc = , mot = , detalhes = [];
+            
+            if (emp.length === 1) {
+                venc = prim[0];
+                mot = Maioria Simples;
+            } else {
+                const cEmp = emp.filter(e = e[0] !== NULO).map(e = VEREADORES.find(v = v.nome === e[0]));
+                const validos = cEmp.filter(v = v);
+                
+                if (validos.length === 0) {
+                    venc = NENHUM; mot = Empate Nulo;
+                } else {
+                    validos.sort((a, b) = calcularDiasVida(a.nasc) - calcularDiasVida(b.nasc));
+                    venc = validos[0].nome;
+                    mot = Critério de Idade (Mais Velho);
+                    detalhes = validos.map(v = ({nome v.nome, idade getTextoIdade(v.nasc)}));
+                }
+            }
+            return { vencedor venc, votos prim[1], motivo mot, detalhes detalhes };
+        }
+
+         --- RENDERIZAÇÃO ---
+        function renderizarTela(data) {
+            const cargoNome = CARGOS[data.indiceCargo];
+            const votos = data.votos  [];
+            
+             Topo
+            document.getElementById('titulo-cargo').innerText = cargoNome;
+            document.getElementById('status-badge').innerText = votos.length  9  `Voto ${votos.length + 1}9`  Finalizado;
+            document.getElementById('status-badge').className = votos.length  9  bg-blue-100 text-blue-800 text-xs font-bold px-3 py-1 rounded-full  bg-green-100 text-green-800 text-xs font-bold px-3 py-1 rounded-full;
+            document.getElementById('barra-progresso').style.width = `${(votos.length9)100}%`;
+            
+             Mensagens
+            const msgPub = document.getElementById('msg-publica');
+            if(votos.length === 0) msgPub.innerText = Aguardando início da votação...;
+            else if(votos.length  9) msgPub.innerText = Computando votos...;
+            else msgPub.innerText = Votação Encerrada.;
+
+             Placar
+            renderizarPlacar(votos);
+            renderizarHistorico(data.historico);
+
+             Botões Admin (Elegibilidade)
+            if(localState.isAdmin) renderizarBotoesAdmin(data.indiceCargo, data.historico);
+
+             Resultado Final
+            const telaRes = document.getElementById('view-resultado');
+            if (data.status === 'encerrado') {
+                const histAtual = data.historico  data.historico[cargoNome]  null;
+                if (histAtual) {
+                    document.getElementById('res-vencedor').innerText = histAtual.vencedor;
+                    document.getElementById('res-detalhe').innerText = `${histAtual.motivo} (${histAtual.votos} votos)`;
+                    
+                    const divDet = document.getElementById('area-detalhe-empate');
+                    const listaDet = document.getElementById('lista-desempate');
+                    if (histAtual.detalhes && histAtual.detalhes.length  0) {
+                        divDet.classList.remove('hidden');
+                        listaDet.innerHTML = histAtual.detalhes.map(d = `div class=flex justify-betweenspan${d.nome}spanspan class=font-bold${d.idade}spandiv`).join('');
+                    } else {
+                        divDet.classList.add('hidden');
+                    }
+                    
+                    telaRes.classList.remove('hidden');
+                    if(!localState.isAdmin) document.getElementById('view-publica').classList.add('hidden');
+                }
+            } else {
+                telaRes.classList.add('hidden');
+                if(!localState.isAdmin) document.getElementById('view-publica').classList.remove('hidden');
+            }
+        }
+
+        function renderizarPlacar(votos) {
+            const lista = document.getElementById('lista-placar');
+            lista.innerHTML = '';
+            const contagem = {}; votos.forEach(v = contagem[v] = (contagem[v]0)+1);
+            const ord = Object.entries(contagem).sort((a,b) = b[1] - a[1]);
+
+             Empate visual
+            const boxEmpate = document.getElementById('box-empate');
+            if(ord.length  1 && ord[0][1] === ord[1][1]) boxEmpate.classList.remove('hidden');
+            else boxEmpate.classList.add('hidden');
+
+            if(ord.length === 0) {
+                lista.innerHTML = 'div class=text-center text-slate-400 italic text-sm py-4Aguardando...div';
+                return;
+            }
+
+            ord.forEach(([nm, qtd]) = {
+                const pct = (qtd9)100;
+                const isLider = qtd === ord[0][1];
+                lista.innerHTML += `
+                    div class=mb-3 animate-fade-in
+                        div class=flex justify-between text-xs font-bold mb-1 ${isLider  'text-blue-800'  'text-slate-500'}
+                            span${nm}span
+                            span${qtd}span
+                        div
+                        div class=w-full bg-slate-200 h-2 rounded-full overflow-hidden
+                            div class=h-full ${isLider  'bg-blue-600'  'bg-slate-400'} transition-all duration-500 style=width ${pct}%div
+                        div
+                    div`;
+            });
+        }
+
+        function renderizarBotoesAdmin(indiceCargo, historico) {
+            const grid = document.getElementById('grid-botoes-admin');
+            grid.innerHTML = '';
+            
+            const cargoAlvo = indiceCargo + 1;  1 a 4
+            const eleitos = historico  Object.values(historico).map(h = h.vencedor)  [];
+
+            VEREADORES.forEach(v = {
+                let elegivel = true;
+                
+                 1. Filtro de Duplicidade (já eleito)
+                if (eleitos.includes(v.nome)) elegivel = false;
+
+                 2. Filtro Regimental (ReeleiçãoCargo Inferior)
+                if (!isElegivel(v, indiceCargo)) elegivel = false;
+
+                if (elegivel) {
+                    const btn = document.createElement('button');
+                    btn.className = bg-white border border-slate-300 hoverbg-blue-50 hoverborder-blue-500 p-3 rounded shadow-sm font-bold text-sm text-left transition;
+                    btn.innerText = v.nome;
+                    btn.onclick = () = enviarVoto(v.nome);
+                    grid.appendChild(btn);
+                }
+            });
+        }
+
+        function renderizarHistorico(historico) {
+            const div = document.getElementById('lista-historico');
+            div.innerHTML = '';
+            if (!historico) return;
+            
+            CARGOS.forEach(c = {
+                if(historico[c]) {
+                    const h = historico[c];
+                    div.innerHTML += `
+                        div class=bg-white p-3 rounded border-l-4 border-green-500 shadow-sm mb-2
+                            p class=text-[10px] font-bold text-slate-400 uppercase${c}p
+                            p class=font-bold text-slate-800 leading-tight${h.vencedor}p
+                            p class=text-[10px] text-slate-500${h.votos} votosp
+                        div`;
+                }
+            });
+        }
+
+         ATA
+        function gerarRelatorioFinal() {
+            const hist = localState.dados.historico  {};
+            const tbody = document.getElementById('corpo-tabela-ata');
+            tbody.innerHTML = '';
+            document.getElementById('data-impressao').innerText = `Emitido em ${new Date().toLocaleString('pt-BR')}`;
+
+            CARGOS.forEach(c = {
+                if(hist[c]) {
+                    const h = hist[c];
+                    const pct = ((h.votos9)100).toFixed(1);
+                    tbody.innerHTML += `
+                        tr
+                            td${c}td
+                            td style=font-weight bold;${h.vencedor}td
+                            td${h.votos} (${pct}%)td
+                            td${h.motivo}td
+                        tr`;
+                }
+            });
+
+            document.getElementById('tela-final').classList.remove('hidden');
+            document.querySelector('section').classList.add('hidden');  Esconde painel votação
+            document.querySelector('aside').classList.add('hidden');  Esconde lateral
+        }
+
+        function fecharAta() {
+            document.getElementById('tela-final').classList.add('hidden');
+            document.querySelector('section').classList.remove('hidden');
+            document.querySelector('aside').classList.remove('hidden');
+        }
+
+    script
+body
+html
