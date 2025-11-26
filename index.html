@@ -262,7 +262,7 @@
         function loginAdmin() {
             if (prompt("Senha:") === "mesa2026") {
                 localState.isAdmin = true;
-                document.body.classList.add('show-admin');
+                document.body.classList.toggle('show-admin', localState.isAdmin);
                 document.getElementById('view-admin').classList.remove('hidden');
                 document.getElementById('btn-login').innerHTML = 'ADMIN';
                 document.getElementById('btn-login').classList.add('text-red-600', 'font-bold');
@@ -446,3 +446,4 @@
     </script>
 </body>
 </html>
+
