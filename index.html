@@ -33,7 +33,7 @@
         @media print {
             @page { margin: 1.5cm; size: A4; }
             body { background: white; color: black; -webkit-print-color-adjust: exact; }
-            header, aside, #view-publica, #view-admin, #view-resultado, .no-print { display: none !important; }
+            header, aside, #view-publica, #view-admin, #view-resultado, #view-encerramento, .no-print { display: none !important; }
             
             /* Força exibição da ata mesmo se estiver oculta na tela */
             #tela-final { 
@@ -64,7 +64,7 @@
 
     <!-- Integração Firebase -->
     <script>
-        // CONFIGURAÇÃO DO FIREBASE
+        // CONFIGURAÇÃO DO FIREBASE (JÁ ADAPTADA PARA O SEU PROJETO)
         const firebaseConfig = {
           apiKey: "AIzaSyA4bHOm0cNf57AKBb7ChGbIMPJdwEe06Jk",
           authDomain: "mesaespumoso2026.firebaseapp.com",
@@ -111,8 +111,8 @@
         <!-- COLUNA PRINCIPAL (Votação/Resultado) -->
         <section class="w-full md:w-2/3 flex flex-col h-full overflow-y-auto pb-10 pr-2">
             
-            <!-- Painel de Status (Sempre Visível) -->
-            <div class="mb-6 no-print">
+            <!-- Painel de Status (Sempre Visível exceto no fim) -->
+            <div id="painel-status" class="mb-6 no-print">
                 <div class="flex justify-between items-end">
                     <div>
                         <span class="text-xs font-bold text-blue-600 uppercase tracking-widest">Cargo em Disputa</span>
@@ -165,13 +165,13 @@
                 </div>
                 
                 <div class="mt-4 pt-4 border-t border-slate-200 text-center">
-                    <button onclick="gerarRelatorioFinal()" class="text-blue-600 text-sm font-bold hover:underline">
-                        <i class="fa-solid fa-file-lines mr-1"></i> Ver/Imprimir Ata Final
+                    <button onclick="finalizarEleicao()" class="text-green-600 text-sm font-bold hover:underline">
+                        <i class="fa-solid fa-flag-checkered mr-1"></i> Encerrar Eleição
                     </button>
                 </div>
             </div>
 
-            <!-- TELA DE RESULTADO (Vencedor) -->
+            <!-- TELA DE RESULTADO PARCIAL (Vencedor do Cargo) -->
             <div id="view-resultado" class="hidden card p-10 text-center border-t-4 border-green-500 fade-in mt-4 no-print">
                 <div class="inline-block p-4 rounded-full bg-green-100 text-green-600 mb-4 text-3xl">
                     <i class="fa-solid fa-check"></i>
@@ -184,6 +184,26 @@
                     <p class="text-xs font-bold text-slate-400 uppercase mb-2">Desempate (Art. 33 §2º - Idade)</p>
                     <div id="lista-desempate" class="space-y-1 text-sm"></div>
                 </div>
+            </div>
+
+            <!-- TELA DE ENCERRAMENTO (Resumo Final) -->
+            <div id="view-encerramento" class="hidden card p-8 text-center fade-in mt-4 no-print h-full flex flex-col justify-center items-center">
+                <div class="mb-6 text-blue-600 text-5xl">
+                    <i class="fa-solid fa-clipboard-check"></i>
+                </div>
+                <h1 class="text-3xl font-black text-slate-800 mb-2">Eleição Concluída</h1>
+                <p class="text-slate-500 mb-8">Todos os cargos foram definidos. A Mesa Diretora para 2026 está formada.</p>
+                
+                <div class="w-full max-w-md bg-slate-50 rounded-xl border border-slate-200 p-6 mb-8 text-left">
+                    <h3 class="text-xs font-bold text-slate-400 uppercase mb-4 border-b pb-2">Resumo da Composição</h3>
+                    <div id="resumo-final-lista" class="space-y-3">
+                        <!-- Preenchido via JS -->
+                    </div>
+                </div>
+
+                <button onclick="gerarRelatorioFinal()" class="bg-slate-800 text-white px-8 py-4 rounded-xl hover:bg-slate-700 font-bold shadow-lg flex items-center gap-3 transition transform hover:-translate-y-1">
+                    <i class="fa-solid fa-print"></i> Gerar Ata Oficial
+                </button>
             </div>
 
             <!-- ATA FINAL (Impressão) -->
@@ -262,13 +282,13 @@
         // --- DADOS DOS VEREADORES (CARGOS ATUAIS DE 2025 PARA REGRA DE 2026) ---
         // 0=Nenhum, 1=Pres, 2=Vice, 3=Geral, 4=Adjunto
         const VEREADORES = [
-            {id: 1, nome: "Dayana Soares (PDT)", nasc: "1979-06-08", cargo_atual: 4}, // Atual Adjunta
-            {id: 2, nome: "Denner Senhor (PL)", nasc: "1983-02-26", cargo_atual: 3},  // Atual Geral
+            {id: 1, nome: "Dayana Soares (PDT)", nasc: "1979-06-08", cargo_atual: 4}, 
+            {id: 2, nome: "Denner Senhor (PL)", nasc: "1983-02-26", cargo_atual: 3},  
             {id: 3, nome: "Eduardo Signor (UB)", nasc: "1994-12-23", cargo_atual: 0},
             {id: 4, nome: "Fabiana Otoni (PP)", nasc: "1982-02-12", cargo_atual: 0},
             {id: 5, nome: "Leandro Colleraus (PDT)", nasc: "1979-03-05", cargo_atual: 0},
-            {id: 6, nome: "Paulo Flores (PDT)", nasc: "1969-05-18", cargo_atual: 2}, // Atual Vice
-            {id: 7, nome: "Tomas Fiuza (PP)", nasc: "1989-10-17", cargo_atual: 1}, // Atual Presidente
+            {id: 6, nome: "Paulo Flores (PDT)", nasc: "1969-05-18", cargo_atual: 2}, 
+            {id: 7, nome: "Tomas Fiuza (PP)", nasc: "1989-10-17", cargo_atual: 1}, 
         ];
         const CARGOS = ["PRESIDENTE", "VICE-PRESIDENTE", "SECRETÁRIO GERAL", "SECRETÁRIO ADJUNTO"];
 
@@ -283,21 +303,13 @@
             return `${an} anos`;
         }
 
-        // --- LÓGICA DE ELEGIBILIDADE (REGRAS RÍGIDAS) ---
+        // --- LÓGICA DE ELEGIBILIDADE ---
         function isElegivel(vereador, indiceCargoDisputa) {
-            // Hierarquia dos cargos (1=Pres, 2=Vice, 3=Geral, 4=Adjunto)
             const cargoAlvo = indiceCargoDisputa + 1; 
             const cargoAtual = vereador.cargo_atual;
-
-            // Regra 1: Se não tem cargo atual (0), é elegível
             if (cargoAtual === 0) return true;
-
-            // Regra 2: Não pode mesmo cargo (Reeleição)
             if (cargoAtual === cargoAlvo) return false;
-
-            // Regra 3: Não pode cargo inferior
             if (cargoAlvo > cargoAtual) return false;
-
             return true;
         }
 
@@ -306,7 +318,7 @@
 
         // --- INICIALIZAÇÃO ---
         dbRef.on('value', (snapshot) => {
-            const data = snapshot.val() || { indiceCargo: 0, votos: [], historico: {}, status: 'votando' };
+            const data = snapshot.val() || { indiceCargo: 0, votos: [], historico: {}, status: 'votando', encerrado: false };
             localState.dados = data;
             renderizarTela(data);
         });
@@ -327,8 +339,8 @@
 
         function setCargo(index) {
             if(!localState.isAdmin) return;
-            if(confirm(`Iniciar votação para ${CARGOS[index]}? Votos atuais serão limpos.`)) {
-                dbRef.update({ indiceCargo: index, votos: [], status: 'votando' });
+            if(confirm(`Iniciar votação para ${CARGOS[index]}?`)) {
+                dbRef.update({ indiceCargo: index, votos: [], status: 'votando', encerrado: false });
             }
         }
 
@@ -340,16 +352,18 @@
             const novosVotos = [...votos, nome];
             const updates = { votos: novosVotos };
             
-            // Verifica se encerrou
             if(novosVotos.length === 9) {
-                updates.status = 'encerrado';
-                // Calcula vencedor e salva no histórico
+                updates.status = 'encerrado_cargo';
                 const res = calcularVencedorLocal(novosVotos, localState.dados.indiceCargo);
                 const hist = localState.dados.historico || {};
                 hist[CARGOS[localState.dados.indiceCargo]] = res;
                 updates.historico = hist;
+                
+                // Se for o último cargo, marca flag global
+                if(localState.dados.indiceCargo === 3) {
+                    // Não encerra automaticamente, deixa o admin clicar no botão
+                }
             }
-            
             dbRef.update(updates);
         }
 
@@ -358,9 +372,8 @@
             const votos = localState.dados.votos || [];
             if(votos.length > 0) {
                 votos.pop();
-                // Se removeu o 9º voto, reabre a votação e remove do histórico
                 let updates = { votos: votos, status: 'votando' };
-                if (localState.dados.status === 'encerrado') {
+                if (localState.dados.status === 'encerrado_cargo') {
                     const hist = localState.dados.historico || {};
                     delete hist[CARGOS[localState.dados.indiceCargo]];
                     updates.historico = hist;
@@ -369,37 +382,44 @@
             }
         }
 
+        function finalizarEleicao() {
+            if(!localState.isAdmin) return;
+            // Verifica se todos cargos tem vencedor
+            const hist = localState.dados.historico || {};
+            const completos = Object.keys(hist).length;
+            
+            if(completos < 4) {
+                if(!confirm(`Atenção: Apenas ${completos} de 4 cargos foram definidos. Deseja encerrar mesmo assim?`)) return;
+            }
+            
+            dbRef.update({ encerrado: true, status: 'finalizado_total' });
+        }
+
         function resetarSistema() {
             if(!localState.isAdmin) return;
-            if(confirm("ZERAR TUDO? Isso apaga todos os resultados.")) {
-                dbRef.set({ indiceCargo: 0, votos: [], historico: {}, status: 'votando' });
+            if(confirm("ZERAR TUDO?")) {
+                dbRef.set({ indiceCargo: 0, votos: [], historico: {}, status: 'votando', encerrado: false });
             }
         }
 
         // --- LÓGICA DE CÁLCULO ---
         function calcularVencedorLocal(votos, indiceCargo) {
             if (!votos || votos.length === 0) return null;
-            const contagem = {};
-            votos.forEach(v => contagem[v] = (contagem[v]||0)+1);
+            const contagem = {}; votos.forEach(v => contagem[v] = (contagem[v]||0)+1);
             const ord = Object.entries(contagem).sort((a,b) => b[1] - a[1]);
             const prim = ord[0];
             const emp = ord.filter(i => i[1] === prim[1]);
 
             let venc = "", mot = "", detalhes = [];
-            
             if (emp.length === 1) {
-                venc = prim[0];
-                mot = "Maioria Simples";
+                venc = prim[0]; mot = "Maioria Simples";
             } else {
                 const cEmp = emp.filter(e => e[0] !== "NULO").map(e => VEREADORES.find(v => v.nome === e[0]));
                 const validos = cEmp.filter(v => v);
-                
-                if (validos.length === 0) {
-                    venc = "NENHUM"; mot = "Empate Nulo";
-                } else {
+                if (validos.length === 0) { venc = "NENHUM"; mot = "Empate Nulo"; }
+                else {
                     validos.sort((a, b) => calcularDiasVida(a.nasc) - calcularDiasVida(b.nasc));
-                    venc = validos[0].nome;
-                    mot = "Critério de Idade (Mais Velho)";
+                    venc = validos[0].nome; mot = "Critério de Idade (Mais Velho)";
                     detalhes = validos.map(v => ({nome: v.nome, idade: getTextoIdade(v.nasc)}));
                 }
             }
@@ -408,36 +428,64 @@
 
         // --- RENDERIZAÇÃO ---
         function renderizarTela(data) {
+            // Se a eleição foi encerrada globalmente
+            if (data.encerrado === true) {
+                document.getElementById('view-publica').classList.add('hidden');
+                document.getElementById('view-resultado').classList.add('hidden');
+                document.getElementById('tela-votacao').classList.add('hidden'); // Esconde votação
+                document.getElementById('painel-status').classList.add('hidden');
+                document.getElementById('view-encerramento').classList.remove('hidden');
+                
+                // Preencher resumo
+                const listaResumo = document.getElementById('resumo-final-lista');
+                listaResumo.innerHTML = '';
+                CARGOS.forEach(c => {
+                    if(data.historico && data.historico[c]) {
+                        const h = data.historico[c];
+                        listaResumo.innerHTML += `
+                            <div class="flex justify-between items-center border-b border-slate-100 pb-2 last:border-0">
+                                <span class="text-xs font-bold text-slate-500 w-1/3">${c}</span>
+                                <span class="text-sm font-bold text-slate-800 w-1/3">${h.vencedor}</span>
+                                <span class="text-xs text-slate-400 w-1/3 text-right">${h.votos} votos</span>
+                            </div>`;
+                    }
+                });
+                
+                // Admin volta se quiser
+                if(localState.isAdmin) {
+                    // document.getElementById('view-admin').classList.remove('hidden'); // Opcional manter visível
+                }
+                return;
+            } else {
+                document.getElementById('view-encerramento').classList.add('hidden');
+                document.getElementById('painel-status').classList.remove('hidden');
+            }
+
+            // Fluxo Normal
             const cargoNome = CARGOS[data.indiceCargo];
             const votos = data.votos || [];
             
-            // Topo
             document.getElementById('titulo-cargo').innerText = cargoNome;
             document.getElementById('status-badge').innerText = votos.length < 9 ? `Voto ${votos.length + 1}/9` : "Finalizado";
             document.getElementById('status-badge').className = votos.length < 9 ? "bg-blue-100 text-blue-800 text-xs font-bold px-3 py-1 rounded-full" : "bg-green-100 text-green-800 text-xs font-bold px-3 py-1 rounded-full";
             document.getElementById('barra-progresso').style.width = `${(votos.length/9)*100}%`;
-            
-            // Mensagens
+
             const msgPub = document.getElementById('msg-publica');
             if(votos.length === 0) msgPub.innerText = "Aguardando início da votação...";
             else if(votos.length < 9) msgPub.innerText = "Computando votos...";
             else msgPub.innerText = "Votação Encerrada.";
 
-            // Placar
             renderizarPlacar(votos);
             renderizarHistorico(data.historico);
 
-            // Botões Admin (Elegibilidade)
             if(localState.isAdmin) renderizarBotoesAdmin(data.indiceCargo, data.historico);
 
-            // Resultado Final
             const telaRes = document.getElementById('view-resultado');
-            if (data.status === 'encerrado') {
+            if (data.status === 'encerrado_cargo') {
                 const histAtual = data.historico ? data.historico[cargoNome] : null;
                 if (histAtual) {
                     document.getElementById('res-vencedor').innerText = histAtual.vencedor;
                     document.getElementById('res-detalhe').innerText = `${histAtual.motivo} (${histAtual.votos} votos)`;
-                    
                     const divDet = document.getElementById('area-detalhe-empate');
                     const listaDet = document.getElementById('lista-desempate');
                     if (histAtual.detalhes && histAtual.detalhes.length > 0) {
@@ -446,7 +494,6 @@
                     } else {
                         divDet.classList.add('hidden');
                     }
-                    
                     telaRes.classList.remove('hidden');
                     if(!localState.isAdmin) document.getElementById('view-publica').classList.add('hidden');
                 }
@@ -461,49 +508,27 @@
             lista.innerHTML = '';
             const contagem = {}; votos.forEach(v => contagem[v] = (contagem[v]||0)+1);
             const ord = Object.entries(contagem).sort((a,b) => b[1] - a[1]);
-
-            // Empate visual
             const boxEmpate = document.getElementById('box-empate');
             if(ord.length > 1 && ord[0][1] === ord[1][1]) boxEmpate.classList.remove('hidden');
             else boxEmpate.classList.add('hidden');
-
             if(ord.length === 0) {
-                lista.innerHTML = '<div class="text-center text-slate-400 italic text-sm py-4">Aguardando...</div>';
-                return;
+                lista.innerHTML = '<div class="text-center text-slate-400 italic text-sm py-4">Aguardando...</div>'; return;
             }
-
             ord.forEach(([nm, qtd]) => {
-                const pct = (qtd/9)*100;
-                const isLider = qtd === ord[0][1];
-                lista.innerHTML += `
-                    <div class="mb-3 animate-fade-in">
-                        <div class="flex justify-between text-xs font-bold mb-1 ${isLider ? 'text-blue-800' : 'text-slate-500'}">
-                            <span>${nm}</span>
-                            <span>${qtd}</span>
-                        </div>
-                        <div class="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
-                            <div class="h-full ${isLider ? 'bg-blue-600' : 'bg-slate-400'} transition-all duration-500" style="width: ${pct}%"></div>
-                        </div>
-                    </div>`;
+                const pct = (qtd/9)*100; const isLider = qtd === ord[0][1];
+                lista.innerHTML += `<div class="mb-3 animate-fade-in"><div class="flex justify-between text-xs font-bold mb-1 ${isLider ? 'text-blue-800' : 'text-slate-500'}"><span>${nm}</span><span>${qtd}</span></div><div class="w-full bg-slate-200 h-2 rounded-full overflow-hidden"><div class="h-full ${isLider ? 'bg-blue-600' : 'bg-slate-400'} transition-all duration-500" style="width: ${pct}%"></div></div></div>`;
             });
         }
 
         function renderizarBotoesAdmin(indiceCargo, historico) {
             const grid = document.getElementById('grid-botoes-admin');
             grid.innerHTML = '';
-            
-            const cargoAlvo = indiceCargo + 1; // 1 a 4
+            const cargoAlvo = indiceCargo + 1; 
             const eleitos = historico ? Object.values(historico).map(h => h.vencedor) : [];
-
             VEREADORES.forEach(v => {
                 let elegivel = true;
-                
-                // 1. Filtro de Duplicidade (já eleito)
                 if (eleitos.includes(v.nome)) elegivel = false;
-
-                // 2. Filtro Regimental (Reeleição/Cargo Inferior)
                 if (!isElegivel(v, indiceCargo)) elegivel = false;
-
                 if (elegivel) {
                     const btn = document.createElement('button');
                     btn.className = "bg-white border border-slate-300 hover:bg-blue-50 hover:border-blue-500 p-3 rounded shadow-sm font-bold text-sm text-left transition";
@@ -518,52 +543,36 @@
             const div = document.getElementById('lista-historico');
             div.innerHTML = '';
             if (!historico) return;
-            
             CARGOS.forEach(c => {
                 if(historico[c]) {
                     const h = historico[c];
-                    div.innerHTML += `
-                        <div class="bg-white p-3 rounded border-l-4 border-green-500 shadow-sm mb-2">
-                            <p class="text-[10px] font-bold text-slate-400 uppercase">${c}</p>
-                            <p class="font-bold text-slate-800 leading-tight">${h.vencedor}</p>
-                            <p class="text-[10px] text-slate-500">${h.votos} votos</p>
-                        </div>`;
+                    div.innerHTML += `<div class="bg-white p-3 rounded border-l-4 border-green-500 shadow-sm mb-2"><p class="text-[10px] font-bold text-slate-400 uppercase">${c}</p><p class="font-bold text-slate-800 leading-tight">${h.vencedor}</p><p class="text-[10px] text-slate-500">${h.votos} votos</p></div>`;
                 }
             });
         }
 
-        // ATA
         function gerarRelatorioFinal() {
             const hist = localState.dados.historico || {};
             const tbody = document.getElementById('corpo-tabela-ata');
             tbody.innerHTML = '';
             document.getElementById('data-impressao').innerText = `Emitido em: ${new Date().toLocaleString('pt-BR')}`;
-
             CARGOS.forEach(c => {
                 if(hist[c]) {
                     const h = hist[c];
                     const pct = ((h.votos/9)*100).toFixed(1);
-                    tbody.innerHTML += `
-                        <tr>
-                            <td>${c}</td>
-                            <td style="font-weight: bold;">${h.vencedor}</td>
-                            <td>${h.votos} (${pct}%)</td>
-                            <td>${h.motivo}</td>
-                        </tr>`;
+                    tbody.innerHTML += `<tr><td>${c}</td><td style="font-weight: bold;">${h.vencedor}</td><td>${h.votos} (${pct}%)</td><td>${h.motivo}</td></tr>`;
                 }
             });
-
             document.getElementById('tela-final').classList.remove('hidden');
-            document.querySelector('section').classList.add('hidden'); // Esconde painel votação
-            document.querySelector('aside').classList.add('hidden'); // Esconde lateral
+            document.getElementById('view-encerramento').classList.add('hidden');
+            document.querySelector('aside').classList.add('hidden');
         }
 
         function fecharAta() {
             document.getElementById('tela-final').classList.add('hidden');
-            document.querySelector('section').classList.remove('hidden');
+            document.getElementById('view-encerramento').classList.remove('hidden');
             document.querySelector('aside').classList.remove('hidden');
         }
-
     </script>
 </body>
 </html>
