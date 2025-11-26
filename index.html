@@ -41,9 +41,8 @@
     <script>
         window.onerror = function(msg, url, line, col, error) {
             console.error("Erro Global:", msg, error);
-            // Ignora "Script error" genérico para não assustar o usuário sem necessidade
             if (msg.toLowerCase().indexOf('script error') > -1) return; 
-            alert("Ocorreu um erro no sistema: " + msg);
+            // alert("Ocorreu um erro no sistema: " + msg); // Comentado para não interromper fluxo
         };
     </script>
 </head>
@@ -281,6 +280,7 @@
                 document.getElementById('view-admin').classList.remove('hidden');
                 document.getElementById('btn-login').innerHTML = 'ADMIN';
                 document.getElementById('btn-login').classList.add('text-red-600', 'font-bold');
+                renderizarTela(localState.dados); // Força re-render para mostrar botões
             } else alert("Senha incorreta.");
         }
 
@@ -372,7 +372,7 @@
                 CARGOS.forEach(c => {
                     if(data.historico && data.historico[c]) {
                         const h = data.historico[c];
-                        list.innerHTML += `<div class="flex justify-between border-b border-slate-100 pb-2"><span class="text-xs font-bold text-slate-500">${c}</span><span class="text-sm font-bold">${h.vencedor}</span></div>`;
+                        list.innerHTML += `<div class="flex justify-between border-b border-slate-100 pb-2"><span class="text-xs font-bold text-slate-500 w-1/3 text-left">${c}</span><span class="text-sm font-bold text-slate-800 w-1/3 text-center">${h.vencedor}</span><span class="text-xs text-slate-400 w-1/3 text-right">${h.votos} votos</span></div>`;
                     }
                 });
                 return;
@@ -401,9 +401,9 @@
                 pl.innerHTML+=`<div class="mb-3"><div class="flex justify-between text-xs font-bold mb-1"><span>${nm}</span><span>${qtd}</span></div><div class="w-full bg-slate-200 h-2 rounded-full"><div class="bg-blue-600 h-full rounded-full transition-all" style="width:${p}%"></div></div></div>`;
             });
 
-            // Botões Admin
+            // Botões Admin - RENDERIZAÇÃO FORÇADA SE ADMIN
+            const grid = document.getElementById('grid-botoes-admin'); grid.innerHTML='';
             if(localState.isAdmin) {
-                const grid = document.getElementById('grid-botoes-admin'); grid.innerHTML='';
                 const eleitos = Object.values(data.historico||{}).map(h=>h.vencedor);
                 VEREADORES.forEach(v=>{
                     if(!eleitos.includes(v.nome) && isElegivel(v, data.indiceCargo)) {
