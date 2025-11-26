@@ -1,449 +1,634 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Apuração Mesa 2026 - Ao Vivo</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    
-    <!-- Firebase App & Database (Compat version 8) -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Apuração Mesa 2026 - Ao Vivo</title>
 
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap');
-        body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; }
-        .card { background: white; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
-        .admin-only { display: none; } 
-        .show-admin .admin-only { display: block; }
-        .show-admin .public-only { display: none; }
-        .animate-pulse-fast { animation: pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        .fade-in { animation: fadeIn 0.5s ease-out; }
+  <!-- Tailwind + FontAwesome (mantidos) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 
-        @media print {
-            @page { margin: 1.5cm; size: A4; }
-            body { background: white; color: black; -webkit-print-color-adjust: exact; }
-            header, aside, #view-publica, #view-admin, #view-resultado, #view-encerramento, .no-print { display: none !important; }
-            #tela-final { display: block !important; width: 100% !important; height: auto !important; overflow: visible !important; border: none !important; box-shadow: none !important; position: static !important; }
-            main { padding: 0 !important; margin: 0 !important; height: auto !important; display: block !important; }
-            section { width: 100% !important; height: auto !important; }
-            .tabela-ata { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 12pt; }
-            .tabela-ata th { background-color: #e2e8f0 !important; border: 1px solid #000; padding: 8px; text-align: left; font-weight: bold; }
-            .tabela-ata td { border: 1px solid #000; padding: 8px; }
-            .assinaturas { margin-top: 50px; display: flex; justify-content: space-between; page-break-inside: avoid; }
-            .assinatura-box { border-top: 1px solid #000; width: 40%; text-align: center; padding-top: 5px; font-size: 10pt; }
-        }
-    </style>
+  <!-- Firebase v8 (compat) -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap');
+    body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; }
+    .card { background: white; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,.08); }
+    .admin-only { display:none; }
+    .show-admin .admin-only { display:block; }
+    .show-admin .public-only { display:none; }
+    .animate-pulse-fast { animation: pulse 1s cubic-bezier(.4,0,.6,1) infinite; }
+    @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
+    .fade-in { animation: fadeIn .45s ease-out; }
+
+    /* Pequeno ajuste visual para barras e botões */
+    .small-btn { font-size: .75rem; padding: .5rem .75rem; }
+    .candidate-btn { text-align: left; width: 100%; }
+
+    /* Print */
+    @media print {
+      @page { margin: 1.5cm; size: A4; }
+      body { background: white; color: black; -webkit-print-color-adjust: exact; }
+      header, aside, #view-publica, #view-admin, #view-resultado, #view-encerramento, .no-print { display: none !important; }
+      #tela-final { display: block !important; width: 100% !important; height: auto !important; overflow: visible !important; border: none !important; box-shadow: none !important; position: static !important; }
+      main { padding:0 !important; margin:0 !important; height:auto !important; display:block !important; }
+      .tabela-ata { width:100%; border-collapse: collapse; margin-top: 20px; font-size: 12pt; }
+      .tabela-ata th { background-color: #e2e8f0 !important; border:1px solid #000; padding:8px; text-align:left; font-weight: bold; }
+      .tabela-ata td { border:1px solid #000; padding:8px; }
+      .assinaturas { margin-top:50px; display:flex; justify-content:space-between; page-break-inside:avoid; }
+      .assinatura-box { border-top:1px solid #000; width:40%; text-align:center; padding-top:5px; font-size:10pt; }
+    }
+  </style>
 </head>
 <body class="h-screen flex flex-col overflow-hidden text-slate-800">
 
-    <!-- Cabeçalho -->
-    <header class="bg-white border-b border-slate-200 h-16 z-20 shadow-sm flex-shrink-0">
-        <div class="container mx-auto h-full flex justify-between items-center px-4">
-            <div class="flex items-center gap-3">
-                <div class="bg-blue-800 text-white font-black px-2 py-1 rounded text-lg">MD26</div>
-                <div>
-                    <h1 class="font-bold text-slate-800 leading-none">Apuração Ao Vivo</h1>
-                    <p class="text-[10px] text-slate-500 uppercase font-bold">Câmara de Espumoso</p>
-                </div>
-            </div>
-            <div class="flex items-center gap-3">
-                <div class="hidden md:flex items-center gap-2 bg-slate-100 px-3 py-1 rounded-full text-xs font-bold text-slate-600">
-                    <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse-fast"></span> Conectado
-                </div>
-                <button onclick="loginAdmin()" id="btn-login" class="text-xs text-slate-400 hover:text-blue-600 underline no-print">
-                    Acesso Restrito
-                </button>
-            </div>
+  <!-- HEADER -->
+  <header class="bg-white border-b border-slate-200 h-16 z-20 shadow-sm flex-shrink-0">
+    <div class="container mx-auto h-full flex justify-between items-center px-4">
+      <div class="flex items-center gap-3">
+        <div class="bg-blue-800 text-white font-black px-2 py-1 rounded text-lg">MD26</div>
+        <div>
+          <h1 class="font-bold text-slate-800 leading-none">Apuração Ao Vivo</h1>
+          <p class="text-[10px] text-slate-500 uppercase font-bold">Câmara de Espumoso</p>
         </div>
-    </header>
+      </div>
 
-    <main class="flex-grow container mx-auto p-4 flex flex-col md:flex-row gap-6 h-[calc(100vh-64px)] overflow-hidden">
-        
-        <!-- Painel Principal -->
-        <section class="w-full md:w-2/3 flex flex-col h-full overflow-y-auto pb-10 pr-2">
-            
-            <!-- Status -->
-            <div id="painel-status" class="mb-6 no-print">
-                <div class="flex justify-between items-end">
-                    <div>
-                        <span class="text-xs font-bold text-blue-600 uppercase tracking-widest">Cargo em Disputa</span>
-                        <h2 id="titulo-cargo" class="text-3xl md:text-4xl font-black text-slate-900 mt-1">Carregando...</h2>
-                    </div>
-                    <div id="status-badge" class="bg-slate-200 text-slate-600 text-xs font-bold px-3 py-1 rounded-full">Offline</div>
-                </div>
-                <div class="w-full bg-slate-200 h-2 rounded-full mt-4 overflow-hidden">
-                    <div id="barra-progresso" class="bg-blue-600 h-full transition-all duration-500" style="width: 0%"></div>
-                </div>
-            </div>
+      <div class="flex items-center gap-3">
+        <div id="conn-indicator" class="hidden md:flex items-center gap-2 bg-slate-100 px-3 py-1 rounded-full text-xs font-bold text-slate-600">
+          <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse-fast"></span> Conectado
+        </div>
+        <button id="btn-login" onclick="loginAdmin()" class="text-xs text-slate-400 hover:text-blue-600 underline no-print small-btn">Acesso Restrito</button>
+      </div>
+    </div>
+  </header>
 
-            <!-- Tela Pública -->
-            <div id="view-publica" class="card p-8 border-t-4 border-blue-500 flex-grow flex items-center justify-center text-center public-only no-print">
-                <div>
-                    <div class="mb-4 text-slate-300"><i class="fa-solid fa-tv text-6xl"></i></div>
-                    <h3 class="text-xl font-bold text-slate-700">Painel de Acompanhamento</h3>
-                    <p class="text-slate-500 text-sm mt-2">Acompanhe a votação em tempo real.</p>
-                    <div class="mt-8 p-4 bg-blue-50 rounded-lg border border-blue-100 text-blue-800 text-sm">
-                        <strong>Status:</strong> <span id="msg-publica">Conectando...</span>
-                    </div>
-                </div>
-            </div>
+  <!-- MAIN -->
+  <main class="flex-grow container mx-auto p-4 flex flex-col md:flex-row gap-6 h-[calc(100vh-64px)] overflow-hidden">
 
-            <!-- Tela Admin -->
-            <div id="view-admin" class="card p-6 border-t-4 border-red-500 admin-only flex-col gap-4 hidden no-print">
-                <div class="bg-red-50 p-3 rounded border border-red-100 text-red-800 text-xs font-bold mb-4 flex justify-between items-center">
-                    <span><i class="fa-solid fa-lock mr-2"></i> PAINEL ADMIN</span>
-                    <button onclick="resetarSistema()" class="underline hover:text-red-950">Zerar Tudo</button>
-                </div>
-                <div class="grid grid-cols-2 gap-2 mb-2">
-                    <button onclick="setCargo(0)" class="bg-slate-100 hover:bg-slate-200 p-2 rounded text-[10px] font-bold uppercase">Presidente</button>
-                    <button onclick="setCargo(1)" class="bg-slate-100 hover:bg-slate-200 p-2 rounded text-[10px] font-bold uppercase">Vice-Pres</button>
-                    <button onclick="setCargo(2)" class="bg-slate-100 hover:bg-slate-200 p-2 rounded text-[10px] font-bold uppercase">Sec. Geral</button>
-                    <button onclick="setCargo(3)" class="bg-slate-100 hover:bg-slate-200 p-2 rounded text-[10px] font-bold uppercase">Sec. Adjunto</button>
-                </div>
-                <p class="text-sm font-bold text-slate-700 mt-2 mb-2">Registrar Voto:</p>
-                <div id="grid-botoes-admin" class="grid grid-cols-2 gap-3"></div>
-                <div class="flex gap-3 mt-6">
-                    <button onclick="enviarVoto('NULO')" class="flex-1 bg-slate-200 hover:bg-slate-300 font-bold py-3 rounded">BRANCO / NULO</button>
-                    <button onclick="removerUltimoVoto()" class="flex-1 bg-red-100 text-red-700 hover:bg-red-200 font-bold py-3 rounded">DESFAZER</button>
-                </div>
-                <div class="mt-4 pt-4 border-t border-slate-200 text-center">
-                    <button onclick="finalizarEleicao()" class="text-blue-600 text-sm font-bold hover:underline">
-                        <i class="fa-solid fa-file-lines mr-1"></i> Ver/Imprimir Ata Final
-                    </button>
-                </div>
-            </div>
+    <!-- Painel Principal -->
+    <section class="w-full md:w-2/3 flex flex-col h-full overflow-y-auto pb-10 pr-2">
 
-            <!-- Tela Resultado -->
-            <div id="view-resultado" class="hidden card p-10 text-center border-t-4 border-green-500 fade-in mt-4 no-print">
-                <div class="inline-block p-4 rounded-full bg-green-100 text-green-600 mb-4 text-3xl"><i class="fa-solid fa-check"></i></div>
-                <h2 class="text-2xl font-bold text-slate-800">Eleito</h2>
-                <h1 id="res-vencedor" class="text-4xl md:text-5xl font-black text-slate-900 my-2">Nome</h1>
-                <p id="res-detalhe" class="text-slate-500 text-sm font-medium">Detalhe</p>
-                <div id="area-detalhe-empate" class="hidden mt-6 pt-6 border-t border-slate-100 text-left bg-slate-50 p-4 rounded-lg">
-                    <p class="text-xs font-bold text-slate-400 uppercase mb-2">Desempate (Art. 33 §2º - Idade)</p>
-                    <div id="lista-desempate" class="space-y-1 text-sm"></div>
-                </div>
-            </div>
+      <!-- Status -->
+      <div id="painel-status" class="mb-6 no-print">
+        <div class="flex justify-between items-end">
+          <div>
+            <span class="text-xs font-bold text-blue-600 uppercase tracking-widest">Cargo em Disputa</span>
+            <h2 id="titulo-cargo" class="text-3xl md:text-4xl font-black text-slate-900 mt-1">Carregando...</h2>
+          </div>
+          <div id="status-badge" class="bg-slate-200 text-slate-600 text-xs font-bold px-3 py-1 rounded-full">Offline</div>
+        </div>
 
-            <!-- Tela Encerramento -->
-            <div id="view-encerramento" class="hidden card p-8 text-center fade-in mt-4 no-print h-full flex flex-col justify-center items-center">
-                <div class="mb-6 text-blue-600 text-5xl"><i class="fa-solid fa-clipboard-check"></i></div>
-                <h1 class="text-3xl font-black text-slate-800 mb-2">Eleição Concluída</h1>
-                <p class="text-slate-500 mb-8">Todos os cargos foram definidos.</p>
-                <div class="w-full max-w-md bg-slate-50 rounded-xl border border-slate-200 p-6 mb-8 text-left">
-                    <h3 class="text-xs font-bold text-slate-400 uppercase mb-4 border-b pb-2">Resumo</h3>
-                    <div id="resumo-final-lista" class="space-y-3"></div>
-                </div>
-                <button onclick="gerarRelatorioFinal()" class="bg-slate-800 text-white px-8 py-4 rounded-xl hover:bg-slate-700 font-bold shadow-lg flex items-center gap-3 transition transform hover:-translate-y-1">
-                    <i class="fa-solid fa-print"></i> Gerar Ata Oficial
-                </button>
-            </div>
+        <div class="w-full bg-slate-200 h-2 rounded-full mt-4 overflow-hidden">
+          <div id="barra-progresso" class="bg-blue-600 h-full transition-all duration-500" style="width:0%"></div>
+        </div>
+      </div>
 
-            <!-- Tela Ata Final -->
-            <div id="tela-final" class="hidden card p-8 fade-in mt-4 bg-white">
-                <div class="ata-header">
-                    <div class="ata-logo">Câmara Municipal de Vereadores de Espumoso/RS</div>
-                    <div class="ata-sub">Estado do Rio Grande do Sul</div>
-                    <h2 class="text-xl font-bold mt-6 uppercase">Ata de Apuração Eletrônica</h2>
-                    <p class="text-sm mt-1">Eleição da Mesa Diretora - Exercício 2026</p>
-                    <p class="text-xs text-slate-500 mt-2" id="data-impressao"></p>
-                </div>
-                <table class="tabela-ata mt-6">
-                    <thead><tr><th width="25%">CARGO</th><th width="30%">ELEITO</th><th width="15%">VOTOS</th><th width="30%">OBSERVAÇÃO</th></tr></thead>
-                    <tbody id="corpo-tabela-ata"></tbody>
-                </table>
-                <div class="assinaturas hidden print:flex">
-                    <div class="assinatura-box">_______________________________________<br><b>Presidente da Sessão</b></div>
-                    <div class="assinatura-box">_______________________________________<br><b>Secretário Geral</b></div>
-                </div>
-                <div class="mt-6 text-right no-print">
-                    <button onclick="window.print()" class="bg-slate-800 text-white px-6 py-2 rounded hover:bg-slate-700 font-bold text-sm"><i class="fa-solid fa-print mr-2"></i> Imprimir</button>
-                    <button onclick="fecharAta()" class="ml-4 text-slate-500 hover:text-slate-800 text-sm underline">Voltar</button>
-                </div>
-            </div>
-        </section>
+      <!-- VIEW PÚBLICA -->
+      <div id="view-publica" class="card p-8 border-t-4 border-blue-500 flex-grow flex items-center justify-center text-center public-only no-print">
+        <div>
+          <div class="mb-4 text-slate-300"><i class="fa-solid fa-tv text-6xl"></i></div>
+          <h3 class="text-xl font-bold text-slate-700">Painel de Acompanhamento</h3>
+          <p class="text-slate-500 text-sm mt-2">Acompanhe a votação em tempo real.</p>
 
-        <!-- Lateral -->
-        <aside class="w-full md:w-1/3 flex flex-col gap-4 h-full pb-10 no-print">
-            <div class="card p-5 flex-grow flex flex-col shadow-sm border-t-4 border-yellow-400">
-                <div class="flex justify-between items-center mb-4 pb-2 border-b border-slate-100">
-                    <h3 class="font-bold text-slate-700 uppercase text-sm">Placar</h3>
-                    <span class="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded">AO VIVO</span>
-                </div>
-                <div id="lista-placar" class="flex-grow space-y-3 overflow-y-auto"></div>
-                <div id="box-empate" class="hidden mt-4 bg-amber-50 border border-amber-200 rounded-lg p-3 animate-pulse">
-                    <div class="flex gap-3 items-center">
-                        <i class="fa-solid fa-scale-balanced text-amber-600"></i>
-                        <div><h4 class="text-xs font-bold text-amber-800">Empate Parcial</h4></div>
-                    </div>
-                </div>
-            </div>
-            <div class="card p-4 h-1/3 overflow-y-auto bg-slate-50 border border-slate-200">
-                <h3 class="font-bold text-slate-400 text-xs uppercase mb-3">Histórico</h3>
-                <div id="lista-historico" class="space-y-2 text-sm"></div>
-            </div>
-        </aside>
-    </main>
+          <div class="mt-8 p-4 bg-blue-50 rounded-lg border border-blue-100 text-blue-800 text-sm">
+            <strong>Status:</strong> <span id="msg-publica">Conectando...</span>
+          </div>
+        </div>
+      </div>
 
-    <script>
-        // --- CONFIGURAÇÃO FIREBASE ---
-        const firebaseConfig = {
-          apiKey: "AIzaSyA4bHOm0cNf57AKBb7ChGbIMPJdwEe06Jk",
-          authDomain: "mesaespumoso2026.firebaseapp.com",
-          databaseURL: "https://mesaespumoso2026-default-rtdb.firebaseio.com",
-          projectId: "mesaespumoso2026",
-          storageBucket: "mesaespumoso2026.firebasestorage.app",
-          messagingSenderId: "549506281878",
-          appId: "1:549506281878:web:381ea223d34b5620102db7"
+      <!-- VIEW ADMIN (inclui área de votação: #tela-votacao) -->
+      <div id="view-admin" class="card p-6 border-t-4 border-red-500 admin-only flex-col gap-4 hidden no-print">
+        <div class="bg-red-50 p-3 rounded border border-red-100 text-red-800 text-xs font-bold mb-4 flex justify-between items-center">
+          <span><i class="fa-solid fa-lock mr-2"></i> PAINEL ADMIN</span>
+          <button onclick="resetarSistema()" class="underline hover:text-red-950 small-btn">Zerar Tudo</button>
+        </div>
+
+        <!-- Seleção de Cargo -->
+        <div class="grid grid-cols-2 gap-2 mb-2">
+          <button onclick="setCargo(0)" class="bg-slate-100 hover:bg-slate-200 p-2 rounded text-[10px] font-bold uppercase small-btn">Presidente</button>
+          <button onclick="setCargo(1)" class="bg-slate-100 hover:bg-slate-200 p-2 rounded text-[10px] font-bold uppercase small-btn">Vice-Pres</button>
+          <button onclick="setCargo(2)" class="bg-slate-100 hover:bg-slate-200 p-2 rounded text-[10px] font-bold uppercase small-btn">Sec. Geral</button>
+          <button onclick="setCargo(3)" class="bg-slate-100 hover:bg-slate-200 p-2 rounded text-[10px] font-bold uppercase small-btn">Sec. Adjunto</button>
+        </div>
+
+        <p class="text-sm font-bold text-slate-700 mt-2 mb-2">Registrar Voto:</p>
+
+        <!-- TELA VOTAÇÃO (visível quando admin) -->
+        <div id="tela-votacao" class="flex flex-col gap-3">
+          <div id="grid-botoes-admin" class="grid grid-cols-2 gap-3"></div>
+
+          <div class="flex gap-3 mt-6">
+            <button id="btn-nulo" onclick="enviarVoto('NULO')" class="flex-1 bg-slate-200 hover:bg-slate-300 font-bold py-3 rounded">BRANCO / NULO</button>
+            <button id="btn-desfazer" onclick="removerUltimoVoto()" class="flex-1 bg-red-100 text-red-700 hover:bg-red-200 font-bold py-3 rounded">DESFAZER</button>
+          </div>
+
+          <div class="mt-4 pt-4 border-t border-slate-200 text-center">
+            <button onclick="finalizarEleicao()" class="text-blue-600 text-sm font-bold hover:underline">
+              <i class="fa-solid fa-file-lines mr-1"></i> Ver/Imprimir Ata Final
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- TELA RESULTADO -->
+      <div id="view-resultado" class="hidden card p-10 text-center border-t-4 border-green-500 fade-in mt-4 no-print">
+        <div class="inline-block p-4 rounded-full bg-green-100 text-green-600 mb-4 text-3xl"><i class="fa-solid fa-check"></i></div>
+        <h2 class="text-2xl font-bold text-slate-800">Eleito</h2>
+        <h1 id="res-vencedor" class="text-4xl md:text-5xl font-black text-slate-900 my-2">Nome</h1>
+        <p id="res-detalhe" class="text-slate-500 text-sm font-medium">Detalhe</p>
+
+        <div id="area-detalhe-empate" class="hidden mt-6 pt-6 border-t border-slate-100 text-left bg-slate-50 p-4 rounded-lg">
+          <p class="text-xs font-bold text-slate-400 uppercase mb-2">Desempate (Art. 33 §2º - Idade)</p>
+          <div id="lista-desempate" class="space-y-1 text-sm"></div>
+        </div>
+      </div>
+
+      <!-- TELA ENCERRAMENTO -->
+      <div id="view-encerramento" class="hidden card p-8 text-center fade-in mt-4 no-print h-full flex flex-col justify-center items-center">
+        <div class="mb-6 text-blue-600 text-5xl"><i class="fa-solid fa-clipboard-check"></i></div>
+        <h1 class="text-3xl font-black text-slate-800 mb-2">Eleição Concluída</h1>
+        <p class="text-slate-500 mb-8">Todos os cargos foram definidos.</p>
+
+        <div class="w-full max-w-md bg-slate-50 rounded-xl border border-slate-200 p-6 mb-8 text-left">
+          <h3 class="text-xs font-bold text-slate-400 uppercase mb-4 border-b pb-2">Resumo</h3>
+          <div id="resumo-final-lista" class="space-y-3"></div>
+        </div>
+
+        <button onclick="gerarRelatorioFinal()" class="bg-slate-800 text-white px-8 py-4 rounded-xl hover:bg-slate-700 font-bold shadow-lg flex items-center gap-3 transition transform hover:-translate-y-1">
+          <i class="fa-solid fa-print"></i> Gerar Ata Oficial
+        </button>
+      </div>
+
+      <!-- TELA ATA FINAL -->
+      <div id="tela-final" class="hidden card p-8 fade-in mt-4 bg-white">
+        <div class="ata-header">
+          <div class="ata-logo">Câmara Municipal de Vereadores de Espumoso/RS</div>
+          <div class="ata-sub">Estado do Rio Grande do Sul</div>
+          <h2 class="text-xl font-bold mt-6 uppercase">Ata de Apuração Eletrônica</h2>
+          <p class="text-sm mt-1">Eleição da Mesa Diretora - Exercício 2026</p>
+          <p class="text-xs text-slate-500 mt-2" id="data-impressao"></p>
+        </div>
+
+        <table class="tabela-ata mt-6">
+          <thead>
+            <tr>
+              <th width="25%">CARGO</th>
+              <th width="30%">ELEITO</th>
+              <th width="15%">VOTOS</th>
+              <th width="30%">OBSERVAÇÃO</th>
+            </tr>
+          </thead>
+          <tbody id="corpo-tabela-ata"></tbody>
+        </table>
+
+        <div class="assinaturas hidden print:flex">
+          <div class="assinatura-box">_______________________________________<br><b>Presidente da Sessão</b></div>
+          <div class="assinatura-box">_______________________________________<br><b>Secretário Geral</b></div>
+        </div>
+
+        <div class="mt-6 text-right no-print">
+          <button onclick="window.print()" class="bg-slate-800 text-white px-6 py-2 rounded hover:bg-slate-700 font-bold text-sm"><i class="fa-solid fa-print mr-2"></i> Imprimir</button>
+          <button onclick="fecharAta()" class="ml-4 text-slate-500 hover:text-slate-800 text-sm underline">Voltar</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- LATERAL -->
+    <aside class="w-full md:w-1/3 flex flex-col gap-4 h-full pb-10 no-print">
+      <div class="card p-5 flex-grow flex flex-col shadow-sm border-t-4 border-yellow-400">
+        <div class="flex justify-between items-center mb-4 pb-2 border-b border-slate-100">
+          <h3 class="font-bold text-slate-700 uppercase text-sm">Placar</h3>
+          <span class="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded">AO VIVO</span>
+        </div>
+
+        <div id="lista-placar" class="flex-grow space-y-3 overflow-y-auto"></div>
+
+        <div id="box-empate" class="hidden mt-4 bg-amber-50 border border-amber-200 rounded-lg p-3 animate-pulse">
+          <div class="flex gap-3 items-center">
+            <i class="fa-solid fa-scale-balanced text-amber-600"></i>
+            <div><h4 class="text-xs font-bold text-amber-800">Empate Parcial</h4></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card p-4 h-1/3 overflow-y-auto bg-slate-50 border border-slate-200">
+        <h3 class="font-bold text-slate-400 text-xs uppercase mb-3">Histórico</h3>
+        <div id="lista-historico" class="space-y-2 text-sm"></div>
+      </div>
+    </aside>
+  </main>
+
+  <!-- SCRIPTS -->
+  <script>
+    /**************************************************************************
+     * Configurações e constantes
+     **************************************************************************/
+    const ADMIN_PASSWORD = "mesa2026";        // mudar se desejar
+    const TOTAL_VOTOS = 9;
+    const DB_PATH = "mesa2026";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyA4bHOm0cNf57AKBb7ChGbIMPJdwEe06Jk",
+      authDomain: "mesaespumoso2026.firebaseapp.com",
+      databaseURL: "https://mesaespumoso2026-default-rtdb.firebaseio.com",
+      projectId: "mesaespumoso2026",
+      storageBucket: "mesaespumoso2026.firebasestorage.app",
+      messagingSenderId: "549506281878",
+      appId: "1:549506281878:web:381ea223d34b5620102db7"
+    };
+
+    const VEREADORES = [
+      {id: 1, nome: "Dayana Soares (PDT)", nasc: "1979-06-08", cargo_atual: 4},
+      {id: 2, nome: "Denner Senhor (PL)", nasc: "1983-02-26", cargo_atual: 3},
+      {id: 3, nome: "Eduardo Signor (UB)", nasc: "1994-12-23", cargo_atual: 0},
+      {id: 4, nome: "Fabiana Otoni (PP)", nasc: "1982-02-12", cargo_atual: 0},
+      {id: 5, nome: "Leandro Colleraus (PDT)", nasc: "1979-03-05", cargo_atual: 0},
+      {id: 6, nome: "Paulo Flores (PDT)", nasc: "1969-05-18", cargo_atual: 2},
+      {id: 7, nome: "Tomas Fiuza (PP)", nasc: "1989-10-17", cargo_atual: 1},
+    ];
+
+    const CARGOS = ["PRESIDENTE", "VICE-PRESIDENTE", "SECRETÁRIO GERAL", "SECRETÁRIO ADJUNTO"];
+
+    // Estado local
+    let localState = { isAdmin: false, dados: {} };
+    let dbRef = null;
+
+    /**************************************************************************
+     * Utilitários
+     **************************************************************************/
+    function calcularDiasVida(s) {
+      // retorna timestamp para comparar idade (mais velho => maior timestamp)
+      return new Date(s).getTime();
+    }
+
+    function getTextoIdade(s) {
+      const hj = new Date(), ns = new Date(s);
+      let an = hj.getFullYear() - ns.getFullYear();
+      const m = hj.getMonth() - ns.getMonth();
+      if (m < 0 || (m === 0 && hj.getDate() < ns.getDate())) an--;
+      return `${an} anos`;
+    }
+
+    function isElegivel(vereador, indiceCargoDisputa) {
+      // cargoAlvo: 1=PRES,2=VICE,3=Geral,4=Adjunto (mesma lógica do teu código)
+      const cargoAlvo = indiceCargoDisputa + 1;
+      const cargoAtual = vereador.cargo_atual;
+      if (cargoAtual === 0) return true;
+      if (cargoAtual === cargoAlvo) return false; // reeleição não permitida
+      if (cargoAlvo > cargoAtual) return false;  // não pode passar para cargo inferior hierárquico
+      return true;
+    }
+
+    function safeGet(v, fallback) { return (typeof v === "undefined" || v === null) ? fallback : v; }
+
+    /**************************************************************************
+     * Inicialização Firebase e listener
+     **************************************************************************/
+    function initFirebase() {
+      if (typeof firebase === "undefined") {
+        console.error("Firebase não encontrado.");
+        alert("Erro: Firebase não carregado.");
+        return;
+      }
+      try {
+        firebase.initializeApp(firebaseConfig);
+      } catch (e) {
+        // se já inicializado, ignora
+        console.log("Firebase init:", e.message);
+      }
+      dbRef = firebase.database().ref(DB_PATH);
+
+      // Listener central: atualiza localState.dados e re-renderiza
+      dbRef.on("value", snapshot => {
+        const val = snapshot.val() || {};
+        localState.dados = {
+          indiceCargo: parseInt(safeGet(val.indiceCargo, 0)) || 0,
+          votos: val.votos ? Object.values(val.votos) : [],
+          historico: safeGet(val.historico, {}),
+          status: safeGet(val.status, "votando"),
+          encerrado: safeGet(val.encerrado, false)
         };
+        renderizarTela(localState.dados);
+      }, err => {
+        console.error("Erro DB listener:", err);
+        document.getElementById("status-badge").innerText = "Erro";
+      });
 
-        // --- DADOS ---
-        const VEREADORES = [
-            {id: 1, nome: "Dayana Soares (PDT)", nasc: "1979-06-08", cargo_atual: 4},
-            {id: 2, nome: "Denner Senhor (PL)", nasc: "1983-02-26", cargo_atual: 3},
-            {id: 3, nome: "Eduardo Signor (UB)", nasc: "1994-12-23", cargo_atual: 0},
-            {id: 4, nome: "Fabiana Otoni (PP)", nasc: "1982-02-12", cargo_atual: 0},
-            {id: 5, nome: "Leandro Colleraus (PDT)", nasc: "1979-03-05", cargo_atual: 0},
-            {id: 6, nome: "Paulo Flores (PDT)", nasc: "1969-05-18", cargo_atual: 2},
-            {id: 7, nome: "Tomas Fiuza (PP)", nasc: "1989-10-17", cargo_atual: 1},
-        ];
-        const CARGOS = ["PRESIDENTE", "VICE-PRESIDENTE", "SECRETÁRIO GERAL", "SECRETÁRIO ADJUNTO"];
-        
-        // Variáveis Globais (Declaradas uma única vez)
-        let localState = { isAdmin: false, dados: {} };
-        let dbRef; // Será inicializada no window.onload
+      // Indica conexão (visual)
+      document.getElementById("conn-indicator").classList.remove("hidden");
+    }
 
-        function calcularDiasVida(s) { return new Date(s).getTime(); }
-        function formatarData(s) { const [a,m,d] = s.split('-'); return `${d}/${m}/${a}`; }
-        function getTextoIdade(s) {
-            const hj = new Date(); const ns = new Date(s);
-            let an = hj.getFullYear() - ns.getFullYear();
-            const m = hj.getMonth() - ns.getMonth();
-            if (m < 0 || (m===0 && hj.getDate() < ns.getDate())) an--;
-            return `${an} anos`;
+    window.addEventListener("load", initFirebase);
+
+    /**************************************************************************
+     * Ações Admin (setCargo, enviarVoto, removerUltimo, finalizar, reset)
+     **************************************************************************/
+    function loginAdmin() {
+      const senha = prompt("Senha:");
+      if (senha === ADMIN_PASSWORD) {
+        localState.isAdmin = true;
+        document.body.classList.toggle("show-admin", true);
+        document.getElementById("view-admin").classList.remove("hidden");
+        document.getElementById("btn-login").innerText = "ADMIN";
+        document.getElementById("btn-login").classList.add("text-red-600", "font-bold");
+        renderizarTela(localState.dados);
+      } else {
+        alert("Senha incorreta.");
+      }
+    }
+
+    function setCargo(index) {
+      if (!localState.isAdmin) return alert("Acesso negado.");
+      if (!confirm(`Mudar para ${CARGOS[index]}?`)) return;
+      // atualiza indiceCargo e reseta votos do cargo
+      dbRef.update({ indiceCargo: index, votos: [], status: "votando", encerrado: false })
+        .catch(e => console.error("Erro setCargo:", e));
+    }
+
+    function enviarVoto(nome) {
+      if (!localState.isAdmin) return;
+      const votos = localState.dados.votos || [];
+      if (votos.length >= TOTAL_VOTOS) return alert("Votos completos.");
+
+      const novos = [...votos, nome];
+      const updates = { votos: novos };
+
+      if (novos.length === TOTAL_VOTOS) {
+        // calcula vencedor local e atualiza historico + status de encerrado do cargo
+        const res = calcularVencedorLocal(novos);
+        const hist = { ...(localState.dados.historico || {}) };
+        hist[CARGOS[localState.dados.indiceCargo]] = res;
+        updates.historico = hist;
+        updates.status = "encerrado_cargo";
+      }
+
+      dbRef.update(updates).catch(e => console.error("Erro enviarVoto:", e));
+    }
+
+    function removerUltimoVoto() {
+      if (!localState.isAdmin) return;
+      const votos = localState.dados.votos || [];
+      if (votos.length === 0) return;
+      const novos = votos.slice(0, -1);
+      const updates = { votos: novos, status: "votando" };
+
+      // Se antes estava em encerrado_cargo e houve remoção, precisa remover o histórico desse cargo
+      if (localState.dados.status === "encerrado_cargo") {
+        const hist = { ...(localState.dados.historico || {}) };
+        delete hist[CARGOS[localState.dados.indiceCargo]];
+        updates.historico = hist;
+      }
+
+      dbRef.update(updates).catch(e => console.error("Erro removerUltimoVoto:", e));
+    }
+
+    function finalizarEleicao() {
+      if (!localState.isAdmin) return;
+      const qtd = Object.keys(localState.dados.historico || {}).length;
+      if (qtd < CARGOS.length && !confirm(`Atenção: Só ${qtd}/${CARGOS.length} cargos definidos. Encerrar?`)) return;
+      dbRef.update({ encerrado: true, status: "finalizado_total" }).catch(e => console.error("Erro finalizarEleicao:", e));
+    }
+
+    function resetarSistema() {
+      if (!localState.isAdmin) return;
+      if (!confirm("ZERAR TUDO?")) return;
+      dbRef.set({ indiceCargo: 0, votos: [], historico: {}, status: "votando", encerrado: false }).catch(e => console.error("Erro resetarSistema:", e));
+    }
+
+    /**************************************************************************
+     * Lógica de apuração (empate/idade)
+     **************************************************************************/
+    function calcularVencedorLocal(votos) {
+      if (!votos || votos.length === 0) return null;
+
+      // contagem simples
+      const cont = {};
+      votos.forEach(v => cont[v] = (cont[v] || 0) + 1);
+
+      // ordena decrescente por votos
+      const ord = Object.entries(cont).sort((a, b) => b[1] - a[1]);
+      const prim = ord[0]; // [nome, qtd]
+      const emp = ord.filter(i => i[1] === prim[1]);
+
+      let vencedor = "", motivo = "", detalhes = [];
+
+      if (emp.length === 1) {
+        vencedor = prim[0];
+        motivo = "Maioria Simples";
+      } else {
+        // desempate por idade: filtrar NULO/BRANCO e buscar vereadores
+        const candidatosEmpate = emp
+          .map(e => e[0])
+          .filter(nome => nome !== "NULO" && nome !== "NULO/BRANCO" && nome !== "BRANCO")
+          .map(nome => VEREADORES.find(v => v.nome === nome))
+          .filter(Boolean);
+
+        if (candidatosEmpate.length === 0) {
+          vencedor = "NENHUM";
+          motivo = "Empate Nulo";
+        } else {
+          // ordena por idade (mais velho primeiro)
+          candidatosEmpate.sort((a, b) => calcularDiasVida(b.nasc) - calcularDiasVida(a.nasc));
+          vencedor = candidatosEmpate[0].nome;
+          motivo = "Critério de Idade (Mais Velho)";
+          detalhes = candidatosEmpate.map(c => ({ nome: c.nome, idade: getTextoIdade(c.nasc) }));
         }
-        function isElegivel(vereador, indiceCargoDisputa) {
-            const cargoAlvo = indiceCargoDisputa + 1; 
-            const cargoAtual = vereador.cargo_atual;
-            if (cargoAtual === 0) return true;
-            if (cargoAtual === cargoAlvo) return false;
-            if (cargoAlvo > cargoAtual) return false;
-            return true;
+      }
+
+      return { vencedor, votos: prim[1], motivo, detalhes };
+    }
+
+    /**************************************************************************
+     * Renderização da UI (central)
+     **************************************************************************/
+    function renderizarTela(data) {
+      // proteção: garante shape mínimo
+      data = data || { indiceCargo: 0, votos: [], historico: {}, status: "votando", encerrado: false };
+
+      // VIEWS: encerramento total
+      if (data.encerrado === true) {
+        hideAllMainViews();
+        document.getElementById("view-encerramento").classList.remove("hidden");
+        preencherResumoFinal(data);
+        return;
+      }
+
+      // padrão: mostra painel principal
+      document.getElementById("view-encerramento").classList.add("hidden");
+      document.getElementById("painel-status").classList.remove("hidden");
+
+      // exibição pública x admin
+      if (localState.isAdmin) {
+        document.getElementById("view-admin").classList.remove("hidden");
+        document.getElementById("view-publica").classList.add("hidden");
+      } else {
+        document.getElementById("view-admin").classList.add("hidden");
+        document.getElementById("view-publica").classList.remove("hidden");
+      }
+
+      // Atualiza informações do cargo / progresso
+      const cargoAtual = CARGOS[safeGet(data.indiceCargo, 0)];
+      const votos = safeGet(data.votos, []);
+      document.getElementById("titulo-cargo").innerText = cargoAtual || "—";
+      document.getElementById("status-badge").innerText = votos.length < TOTAL_VOTOS ? `Voto ${votos.length + 1}/${TOTAL_VOTOS}` : "Fim";
+      document.getElementById("barra-progresso").style.width = `${(votos.length / TOTAL_VOTOS) * 100}%`;
+      document.getElementById("msg-publica").innerText = votos.length < TOTAL_VOTOS ? "Votando..." : "Encerrado.";
+
+      // Placar lateral
+      preencherPlacar(votos);
+
+      // Grid de botões admin
+      if (localState.isAdmin) preencherGridAdmin(data);
+
+      // Exibir resultado do cargo se status == encerrado_cargo
+      if (data.status === "encerrado_cargo") {
+        mostrarResultadoCargo(data, cargoAtual);
+      } else {
+        document.getElementById("view-resultado").classList.add("hidden");
+        // restaura view publica se não admin
+        if (!localState.isAdmin) document.getElementById("view-publica").classList.remove("hidden");
+      }
+
+      // histórico lateral
+      preencherHistorico(data);
+    }
+
+    /**************************************************************************
+     * Funções auxiliares de renderização
+     **************************************************************************/
+    function hideAllMainViews() {
+      const ids = ["view-publica","view-admin","view-resultado","view-encerramento","tela-final"];
+      ids.forEach(id => document.getElementById(id)?.classList.add("hidden"));
+    }
+
+    function preencherPlacar(votos) {
+      const pl = document.getElementById("lista-placar");
+      pl.innerHTML = "";
+      const cont = {};
+      (votos || []).forEach(v => cont[v] = (cont[v] || 0) + 1);
+      const ord = Object.entries(cont).sort((a,b) => b[1] - a[1]);
+
+      ord.forEach(([nm, qtd]) => {
+        const p = (qtd / TOTAL_VOTOS) * 100;
+        const html = `
+          <div class="mb-3">
+            <div class="flex justify-between text-xs font-bold mb-1"><span>${nm}</span><span>${qtd}</span></div>
+            <div class="w-full bg-slate-200 h-2 rounded-full">
+              <div class="bg-blue-600 h-full rounded-full transition-all" style="width:${p}%"></div>
+            </div>
+          </div>`;
+        pl.insertAdjacentHTML("beforeend", html);
+      });
+    }
+
+    function preencherGridAdmin(data) {
+      const grid = document.getElementById("grid-botoes-admin");
+      grid.innerHTML = "";
+      const eleitos = Object.values(safeGet(data.historico, {})).map(h => h.vencedor);
+
+      VEREADORES.forEach(v => {
+        if (!eleitos.includes(v.nome) && isElegivel(v, data.indiceCargo)) {
+          const btn = document.createElement("button");
+          btn.className = "bg-white border hover:bg-blue-50 p-3 rounded text-sm font-bold text-left candidate-btn";
+          btn.textContent = v.nome;
+
+          // bloqueia se votos completos
+          const votos = safeGet(data.votos, []);
+          if (votos.length >= TOTAL_VOTOS) btn.disabled = true;
+
+          btn.addEventListener("click", () => enviarVoto(v.nome));
+          grid.appendChild(btn);
         }
+      });
 
-        // --- INICIALIZAÇÃO SEGURA ---
-        window.onload = function() {
-            try {
-                if (typeof firebase === 'undefined') throw new Error("Firebase não carregado.");
-                firebase.initializeApp(firebaseConfig);
-                dbRef = firebase.database().ref('mesa2026');
-                
-                dbRef.on('value', (snapshot) => {
-                    const val = snapshot.val() || {};
-                    localState.dados = {
-                        indiceCargo: parseInt(val.indiceCargo) || 0,
-                        votos: val.votos ? Object.values(val.votos) : [],
-                        historico: val.historico || {},
-                        status: val.status || 'votando',
-                        encerrado: val.encerrado === true
-                    };
-                    renderizarTela(localState.dados);
-                });
-            } catch(e) {
-                console.error("Erro:", e);
-                alert("Erro ao iniciar: " + e.message);
-            }
-        };
+      // ativa/desativa botões de ação (nulo/desfazer)
+      const votos = safeGet(data.votos, []);
+      document.getElementById("btn-nulo").disabled = votos.length >= TOTAL_VOTOS;
+      document.getElementById("btn-desfazer").disabled = votos.length === 0;
+    }
 
-        // --- ADMIN ---
-        function loginAdmin() {
-            if (prompt("Senha:") === "mesa2026") {
-                localState.isAdmin = true;
-                document.body.classList.toggle('show-admin', localState.isAdmin);
-                document.getElementById('view-admin').classList.remove('hidden');
-                document.getElementById('btn-login').innerHTML = 'ADMIN';
-                document.getElementById('btn-login').classList.add('text-red-600', 'font-bold');
-                renderizarTela(localState.dados);
-            } else alert("Senha incorreta.");
+    function mostrarResultadoCargo(data, cargoNome) {
+      const hist = safeGet(data.historico, {})[cargoNome] || null;
+      if (!hist) return;
+
+      document.getElementById("res-vencedor").innerText = hist.vencedor || "—";
+      document.getElementById("res-detalhe").innerText = hist.motivo || "";
+      const det = document.getElementById("area-detalhe-empate");
+      const lista = document.getElementById("lista-desempate");
+
+      if (hist.detalhes && hist.detalhes.length) {
+        det.classList.remove("hidden");
+        lista.innerHTML = hist.detalhes.map(d => `<div>${d.nome}: ${d.idade}</div>`).join("");
+      } else {
+        det.classList.add("hidden");
+        lista.innerHTML = "";
+      }
+
+      document.getElementById("view-resultado").classList.remove("hidden");
+      if (!localState.isAdmin) document.getElementById("view-publica").classList.add("hidden");
+    }
+
+    function preencherHistorico(data) {
+      const hl = document.getElementById("lista-historico");
+      hl.innerHTML = "";
+      (CARGOS || []).forEach(c => {
+        if (data.historico && data.historico[c]) {
+          hl.insertAdjacentHTML("beforeend", `
+            <div class="bg-white p-3 rounded border-l-4 border-green-500 shadow-sm mb-2">
+              <p class="text-[10px] font-bold text-slate-400 uppercase">${c}</p>
+              <p class="font-bold text-slate-800">${data.historico[c].vencedor}</p>
+            </div>`);
         }
+      });
+    }
 
-        function setCargo(index) {
-            if(localState.isAdmin && confirm(`Mudar para ${CARGOS[index]}?`)) {
-                dbRef.update({ indiceCargo: index, votos: [], status: 'votando', encerrado: false });
-            }
+    function preencherResumoFinal(data) {
+      const list = document.getElementById("resumo-final-lista");
+      list.innerHTML = "";
+      (CARGOS || []).forEach(c => {
+        if (data.historico && data.historico[c]) {
+          const h = data.historico[c];
+          list.insertAdjacentHTML("beforeend", `
+            <div class="flex justify-between border-b border-slate-100 pb-2">
+              <span class="text-xs font-bold text-slate-500 w-1/3 text-left">${c}</span>
+              <span class="text-sm font-bold text-slate-800 w-1/3 text-center">${h.vencedor}</span>
+              <span class="text-xs text-slate-400 w-1/3 text-right">${h.votos} votos</span>
+            </div>`);
         }
+      });
+    }
 
-        function enviarVoto(nome) {
-            if(!localState.isAdmin) return;
-            const votos = localState.dados.votos || [];
-            if(votos.length >= 9) return alert("Votos completos.");
-            
-            const novosVotos = [...votos, nome];
-            let updates = { votos: novosVotos };
-            
-            if(novosVotos.length === 9) {
-                updates.status = 'encerrado_cargo';
-                const res = calcularVencedorLocal(novosVotos);
-                const hist = {...localState.dados.historico};
-                hist[CARGOS[localState.dados.indiceCargo]] = res;
-                updates.historico = hist;
-            }
-            dbRef.update(updates);
+    /**************************************************************************
+     * Relatório / Ata
+     **************************************************************************/
+    function gerarRelatorioFinal() {
+      const hist = safeGet(localState.dados.historico, {});
+      const body = document.getElementById("corpo-tabela-ata");
+      body.innerHTML = "";
+      document.getElementById("data-impressao").innerText = new Date().toLocaleString();
+
+      (CARGOS || []).forEach(c => {
+        if (hist[c]) {
+          const pct = ((hist[c].votos / TOTAL_VOTOS) * 100).toFixed(1);
+          body.insertAdjacentHTML("beforeend", `<tr><td>${c}</td><td style="font-weight:bold">${hist[c].vencedor}</td><td>${hist[c].votos} (${pct}%)</td><td>${hist[c].motivo}</td></tr>`);
         }
+      });
 
-        function removerUltimoVoto() {
-            if(!localState.isAdmin) return;
-            const votos = localState.dados.votos || [];
-            if(votos.length > 0) {
-                const novos = votos.slice(0, -1);
-                let updates = { votos: novos, status: 'votando' };
-                if(localState.dados.status === 'encerrado_cargo') {
-                    const hist = {...localState.dados.historico};
-                    delete hist[CARGOS[localState.dados.indiceCargo]];
-                    updates.historico = hist;
-                }
-                dbRef.update(updates);
-            }
-        }
+      document.getElementById("tela-final").classList.remove("hidden");
+      document.getElementById("view-encerramento").classList.add("hidden");
+    }
 
-        function finalizarEleicao() {
-            if(!localState.isAdmin) return;
-            const qtd = Object.keys(localState.dados.historico || {}).length;
-            if(qtd < 4 && !confirm(`Atenção: Só ${qtd}/4 cargos definidos. Encerrar?`)) return;
-            dbRef.update({ encerrado: true, status: 'finalizado_total' });
-        }
+    function fecharAta() {
+      document.getElementById("tela-final").classList.add("hidden");
+      document.getElementById("view-encerramento").classList.remove("hidden");
+    }
 
-        function resetarSistema() {
-            if(localState.isAdmin && confirm("ZERAR TUDO?")) {
-                dbRef.set({ indiceCargo: 0, votos: [], historico: {}, status: 'votando', encerrado: false });
-            }
-        }
-
-        function calcularVencedorLocal(votos) {
-            if (!votos || !votos.length) return null;
-            const cont = {}; votos.forEach(v => cont[v]=(cont[v]||0)+1);
-            const ord = Object.entries(cont).sort((a,b)=>b[1]-a[1]);
-            const prim = ord[0];
-            const emp = ord.filter(i=>i[1]===prim[1]);
-            
-            let venc="", mot="", det=[];
-            if(emp.length===1) { 
-                venc=prim[0]; mot="Maioria Simples"; 
-            } else {
-                const cEmp = emp.filter(e=>e[0]!=="NULO").map(e=>VEREADORES.find(v=>v.nome===e[0])).filter(v=>v);
-                if(!cEmp.length) { venc="NENHUM"; mot="Empate Nulo"; }
-                else {
-                    cEmp.sort((a,b)=>calcularDiasVida(a.nasc)-calcularDiasVida(b.nasc));
-                    venc=cEmp[0].nome; mot="Critério de Idade (Mais Velho)";
-                    det=cEmp.map(v=>({nome:v.nome, idade:getTextoIdade(v.nasc)}));
-                }
-            }
-            return { vencedor: venc, votos: prim[1], motivo: mot, detalhes: det };
-        }
-
-        function renderizarTela(data) {
-            if (data.encerrado === true) {
-                document.getElementById('view-publica').classList.add('hidden');
-                document.getElementById('view-resultado').classList.add('hidden');
-                document.getElementById('tela-votacao').classList.add('hidden');
-                document.getElementById('painel-status').classList.add('hidden');
-                document.getElementById('view-encerramento').classList.remove('hidden');
-                
-                const list = document.getElementById('resumo-final-lista');
-                list.innerHTML = '';
-                CARGOS.forEach(c => {
-                    if(data.historico && data.historico[c]) {
-                        const h = data.historico[c];
-                        list.innerHTML += `<div class="flex justify-between border-b border-slate-100 pb-2"><span class="text-xs font-bold text-slate-500 w-1/3 text-left">${c}</span><span class="text-sm font-bold text-slate-800 w-1/3 text-center">${h.vencedor}</span><span class="text-xs text-slate-400 w-1/3 text-right">${h.votos} votos</span></div>`;
-                    }
-                });
-                return;
-            }
-            
-            document.getElementById('view-encerramento').classList.add('hidden');
-            document.getElementById('painel-status').classList.remove('hidden');
-            if(localState.isAdmin) document.getElementById('tela-votacao').classList.remove('hidden');
-            else document.getElementById('view-publica').classList.remove('hidden');
-
-            const cargo = CARGOS[data.indiceCargo];
-            const votos = data.votos;
-            
-            document.getElementById('titulo-cargo').innerText = cargo;
-            document.getElementById('status-badge').innerText = votos.length < 9 ? `Voto ${votos.length+1}/9` : "Fim";
-            document.getElementById('barra-progresso').style.width = `${(votos.length/9)*100}%`;
-            document.getElementById('msg-publica').innerText = votos.length < 9 ? "Votando..." : "Encerrado.";
-
-            const pl = document.getElementById('lista-placar'); pl.innerHTML='';
-            const cont={}; votos.forEach(v=>cont[v]=(cont[v]||0)+1);
-            const ord=Object.entries(cont).sort((a,b)=>b[1]-a[1]);
-            ord.forEach(([nm,qtd])=>{
-                const p=(qtd/9)*100; 
-                pl.innerHTML+=`<div class="mb-3"><div class="flex justify-between text-xs font-bold mb-1"><span>${nm}</span><span>${qtd}</span></div><div class="w-full bg-slate-200 h-2 rounded-full"><div class="bg-blue-600 h-full rounded-full transition-all" style="width:${p}%"></div></div></div>`;
-            });
-
-            if(localState.isAdmin) {
-                const grid = document.getElementById('grid-botoes-admin'); grid.innerHTML='';
-                const eleitos = Object.values(data.historico||{}).map(h=>h.vencedor);
-                VEREADORES.forEach(v=>{
-                    if(!eleitos.includes(v.nome) && isElegivel(v, data.indiceCargo)) {
-                        const btn=document.createElement('button');
-                        btn.className="bg-white border hover:bg-blue-50 p-3 rounded text-sm font-bold text-left";
-                        btn.innerText=v.nome;
-                        btn.onclick=()=>enviarVoto(v.nome);
-                        grid.appendChild(btn);
-                    }
-                });
-            }
-
-            const telaRes = document.getElementById('view-resultado');
-            if(data.status === 'encerrado_cargo') {
-                const hist = data.historico ? data.historico[cargo] : null;
-                if(hist) {
-                    document.getElementById('res-vencedor').innerText = hist.vencedor;
-                    document.getElementById('res-detalhe').innerText = hist.motivo;
-                    const det = document.getElementById('area-detalhe-empate');
-                    if(hist.detalhes && hist.detalhes.length) {
-                        det.classList.remove('hidden');
-                        document.getElementById('lista-desempate').innerHTML = hist.detalhes.map(d=>`<div>${d.nome}: ${d.idade}</div>`).join('');
-                    } else det.classList.add('hidden');
-                    
-                    telaRes.classList.remove('hidden');
-                    if(!localState.isAdmin) document.getElementById('view-publica').classList.add('hidden');
-                }
-            } else {
-                telaRes.classList.add('hidden');
-            }
-            
-            const hl = document.getElementById('lista-historico'); hl.innerHTML='';
-            CARGOS.forEach(c=>{
-                if(data.historico && data.historico[c]) {
-                    hl.innerHTML+=`<div class="bg-white p-3 rounded border-l-4 border-green-500 shadow-sm mb-2"><p class="text-[10px] font-bold text-slate-400 uppercase">${c}</p><p class="font-bold text-slate-800">${data.historico[c].vencedor}</p></div>`;
-                }
-            });
-        }
-
-        function gerarRelatorioFinal() {
-            const hist = localState.dados.historico || {};
-            const body = document.getElementById('corpo-tabela-ata'); body.innerHTML='';
-            document.getElementById('data-impressao').innerText = new Date().toLocaleString();
-            CARGOS.forEach(c=>{
-                if(hist[c]) {
-                    const pct = ((hist[c].votos/9)*100).toFixed(1);
-                    body.innerHTML+=`<tr><td>${c}</td><td style="font-weight:bold">${hist[c].vencedor}</td><td>${hist[c].votos} (${pct}%)</td><td>${hist[c].motivo}</td></tr>`;
-                }
-            });
-            document.getElementById('tela-final').classList.remove('hidden');
-            document.getElementById('view-encerramento').classList.add('hidden');
-        }
-
-        function fecharAta() {
-            document.getElementById('tela-final').classList.add('hidden');
-            document.getElementById('view-encerramento').classList.remove('hidden');
-        }
-    </script>
+    /**************************************************************************
+     * Fim
+     **************************************************************************/
+  </script>
 </body>
 </html>
-
