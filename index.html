@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIV - Mesa Diretora 2026 (Versão Final)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; user-select: none; }
+        .card-candidato { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+        .card-candidato:active { transform: scale(0.95); }
+        .animate-pop { animation: pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        @keyframes pop { 0% { transform: scale(0.8); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+        @media print {
+            body * { visibility: hidden; }
+            #tela-final, #tela-final * { visibility: visible; }
+            #tela-final { position: absolute; left: 0; top: 0; width: 100%; }
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden bg-slate-50">
+
+    <header class="bg-slate-900 text-white p-4 shadow-lg flex justify-between items-center z-20">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-blue-600 rounded flex items-center justify-center font-bold text-lg shadow">
+                <i class="fas fa-vote-yea"></i>
+            </div>
+            <div>
+                <h1 class="text-lg font-bold leading-none">Câmara Municipal de Espumoso</h1>
+                <p class="text-xs text-slate-400 mt-1 uppercase tracking-wider">Sistema de Apuração 2026</p>
+            </div>
+        </div>
+        <div class="text-right">
+            <div id="relogio" class="font-mono text-xl text-blue-400 font-bold">00:00:00</div>
+            <div class="text-[10px] text-slate-500 uppercase">Sessão Plenária Oficial</div>
+        </div>
+    </header>
+
+    <main class="flex-1 flex overflow-hidden">
+        
+        <section class="flex-1 flex flex-col relative w-3/4 bg-slate-50" id="painel-principal">
+            
+            <div id="tela-votacao" class="flex-1 flex flex-col p-8 overflow-y-auto">
+                
+                <div class="flex justify-between items-end mb-6">
+                    <div>
+                        <span class="text-xs font-bold text-blue-600 bg-blue-100 px-2 py-1 rounded uppercase tracking-wider mb-2 inline-block">Em Disputa</span>
+                        <h2 id="cargo-titulo" class="text-5xl font-black text-slate-800 tracking-tight">PRESIDENTE</h2>
+                        <p class="text-slate-500 mt-2 text-sm flex items-center gap-2 bg-yellow-50 p-2 rounded border border-yellow-200 inline-flex">
+                            <i class="fas fa-bolt text-yellow-600"></i>
+                            <span>Dica: Segure <b>SHIFT + Clique</b> para atribuir todos os votos restantes (Unanimidade).</span>
+                        </p>
+                    </div>
+                    <div class="text-right">
+                        <div id="contador-votos" class="text-4xl font-black text-slate-200">0<span class="text-2xl text-slate-300">/9</span></div>
+                        <div class="text-xs text-slate-400 font-bold uppercase">Cédulas Computadas</div>
+                    </div>
+                </div>
+
+                <div class="w-full bg-slate-200 h-3 rounded-full mb-8 overflow-hidden shadow-inner">
+                    <div id="barra-progresso" class="bg-blue-600 h-full w-0 transition-all duration-300 ease-out relative">
+                        <div class="absolute right-0 top-0 bottom-0 w-2 bg-white/30 animate-pulse"></div>
+                    </div>
+                </div>
+
+                <div id="grid-candidatos" class="grid grid-cols-4 gap-4 auto-rows-fr">
+                    </div>
+
+                <div class="mt-auto pt-6 border-t border-slate-200 flex gap-3">
+                    <button onclick="registrarVoto('NULO')" class="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-600 font-bold py-4 rounded-xl transition flex items-center justify-center gap-2">
+                        <i class="fas fa-ban"></i> BRANCO / NULO
+                    </button>
+                    <button onclick="desfazerVoto()" class="px-8 bg-red-100 hover:bg-red-200 text-red-600 font-bold rounded-xl transition flex items-center justify-center" title="Corrigir último voto">
+                        <i class="fas fa-backspace text-xl"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div id="tela-resultado" class="hidden absolute inset-0 bg-white/95 backdrop-blur-sm z-30 flex flex-col items-center justify-center p-10 animate-fade-in">
+                <div class="w-24 h-24 bg-green-500 text-white rounded-full flex items-center justify-center text-4xl shadow-lg mb-6 animate-pop">
+                    <i class="fas fa-check"></i>
+                </div>
+                <h3 class="text-slate-400 text-sm font-bold uppercase tracking-widest mb-2">Resultado Oficial</h3>
+                <h2 id="res-nome" class="text-5xl font-black text-slate-800 mb-2 text-center leading-tight">CANDIDATO</h2>
+                <div class="bg-slate-100 px-4 py-2 rounded-lg border border-slate-200 mb-8">
+                    <span class="text-slate-500 text-sm">Eleito com <strong id="res-votos" class="text-slate-800">X</strong> votos</span>
+                    <span class="mx-2 text-slate-300">|</span>
+                    <span id="res-motivo" class="text-xs font-bold text-slate-600 uppercase">MOTIVO</span>
+                </div>
+
+                <div id="area-detalhe-empate" class="hidden w-full max-w-lg bg-yellow-50 p-4 rounded-lg border border-yellow-200 mb-8 text-left">
+                    <h4 class="text-xs font-bold text-yellow-800 uppercase mb-2 border-b border-yellow-200 pb-1 flex justify-between">
+                        <span>Critério de Desempate (Art. 33, §2º)</span>
+                        <i class="fas fa-balance-scale"></i>
+                    </h4>
+                    <div id="lista-desempate" class="space-y-2 text-sm"></div>
+                </div>
+
+                <button onclick="proximoCargo()" class="bg-slate-900 hover:bg-slate-800 text-white text-lg font-bold py-4 px-12 rounded-xl shadow-xl transition transform hover:scale-105 flex items-center gap-3">
+                    Próximo Cargo <i class="fas fa-arrow-right"></i>
+                </button>
+            </div>
+
+            <div id="tela-final" class="hidden bg-white min-h-screen p-12 max-w-4xl mx-auto absolute inset-0 z-40 overflow-y-auto">
+                <div class="text-center border-b-2 border-black pb-8 mb-8">
+                     <img src="brasao.jpg" 
+                      class="h-28 mx-auto mb-4 object-contain" 
+                      alt="Brasão Municipal">
+    
+                     <h2 class="text-3xl font-bold uppercase font-serif">Ata de Eleição Mesa Diretora</h2>
+                     <p class="text-sm font-mono mt-2">Câmara Municipal de Espumoso - RS</p>
+                     <p id="data-impressao" class="text-xs mt-1 text-gray-500"></p>
+               </div>
+                
+                <table class="w-full text-left border-collapse border border-black mb-12">
+                    <thead>
+                        <tr class="bg-gray-100">
+                            <th class="border border-black p-3 text-sm uppercase font-bold">Cargo</th>
+                            <th class="border border-black p-3 text-sm uppercase font-bold">Vereador Eleito</th>
+                            <th class="border border-black p-3 text-sm uppercase font-bold text-center">Votos</th>
+                            <th class="border border-black p-3 text-sm uppercase font-bold">Critério</th>
+                        </tr>
+                    </thead>
+                    <tbody id="corpo-tabela-ata" class="font-mono text-sm"></tbody>
+                </table>
+
+                <div class="grid grid-cols-2 gap-20 mt-20 break-inside-avoid">
+                    <div class="text-center border-t border-black pt-2"><p class="font-bold text-sm">Presidente da Sessão</p></div>
+                    <div class="text-center border-t border-black pt-2"><p class="font-bold text-sm">Secretário Geral</p></div>
+                </div>
+
+                <div class="mt-10 text-center no-print sticky bottom-10">
+                    <button onclick="window.print()" class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-full font-bold shadow-2xl flex items-center gap-2 mx-auto">
+                        <i class="fas fa-print"></i> Imprimir Documento Oficial
+                    </button>
+                </div>
+            </div>
+
+        </section>
+
+        <aside class="w-1/4 bg-white border-l border-slate-200 p-6 flex flex-col shadow-xl z-10 relative">
+            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                <i class="fas fa-chart-bar"></i> Apuração em Tempo Real
+            </h3>
+            
+            <div id="placar-lista" class="flex-1 overflow-y-auto space-y-3">
+                <p class="text-center text-slate-300 text-sm py-10 italic">Aguardando votos...</p>
+            </div>
+
+            <div id="box-empate" class="hidden mt-4 bg-red-50 border border-red-100 p-4 rounded-lg animate-pulse">
+                <div class="flex items-center gap-2 text-red-700 font-bold text-sm mb-1">
+                    <i class="fas fa-exclamation-triangle"></i> Risco de Empate
+                </div>
+                <p class="text-xs text-red-600 leading-relaxed">O sistema aplicará o critério de maior idade automaticamente.</p>
+            </div>
+
+            <div class="mt-auto pt-6 border-t border-slate-200">
+                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Eleitos (Lista Negra)</h3>
+                <div id="historico-lista" class="space-y-2">
+                    <p class="text-xs text-slate-300">Nenhum eleito ainda.</p>
+                </div>
+            </div>
+        </aside>
+
+    </main>
+
+    <script>
+        // === CONFIGURAÇÃO E DADOS ===
+        const CARGOS = ["PRESIDENTE", "VICE-PRESIDENTE", "SECRETÁRIO GERAL", "SECRETÁRIO ADJUNTO"];
+        
+        // VEREADORES (Banco de Dados)
+        // IDs fixos garantem a integridade da exclusão
+        const VEREADORES = [
+            {id: 1, nome: "Dayana Soares (PDT)", nasc: "1979-06-08", cargo_atual: 4, suplente: false},
+            {id: 2, nome: "Denner Senhor (PL)", nasc: "1983-02-26", cargo_atual: 3, suplente: false},
+            {id: 3, nome: "Eduardo Signor (UB)", nasc: "1994-12-23", cargo_atual: 0, suplente: false},
+            {id: 4, nome: "Fabiana Otoni (PP)", nasc: "1982-02-12", cargo_atual: 0, suplente: false},
+            {id: 5, nome: "Leandro Colleraus (PDT)", nasc: "1979-03-05", cargo_atual: 0, suplente: false},
+            {id: 6, nome: "Paulo Flores (PDT)", nasc: "1969-05-18", cargo_atual: 2, suplente: false},
+            {id: 7, nome: "Tomas Fiuza (PP)", nasc: "1989-10-17", cargo_atual: 1, suplente: false},
+            {id: 8, nome: "Leonardo Comin (PP)", nasc: "1980-06-15", cargo_atual: 0, suplente: false},
+            {id: 9, nome: "Marina Camera (PL)", nasc: "1980-01-01", cargo_atual: 0, suplente: true} // Suplente
+        ];
+
+        // Estado Global
+        let estado = { 
+            indiceCargo: 0, 
+            votos: [], 
+            vencedoresIds: [], // Lista Negra de IDs (Inteiros)
+            historicoResultados: [] 
+        };
+
+        // === LÓGICA DE NEGÓCIO (REGIMENTO) ===
+
+        function isElegivel(vereador, indiceCargoDisputa) {
+            const hierarquiaDisputa = indiceCargoDisputa + 1;
+
+            // 1. FILTRO DE EXCLUSÃO (CRÍTICO): Se o ID está na lista de vencedores, TCHAU.
+            if (estado.vencedoresIds.includes(vereador.id)) return false;
+
+            // 2. FILTRO DE SUPLÊNCIA
+            if (vereador.suplente) return false;
+
+            // Se não tem cargo na mesa atual, é elegível (pois já passou pelo filtro 1)
+            if (vereador.cargo_atual === 0) return true;
+
+            // 3. REELEIÇÃO (Mesmo Cargo)
+            if (vereador.cargo_atual === hierarquiaDisputa) return false;
+
+            // 4. DESCENSO (Cargo Inferior)
+            if (hierarquiaDisputa > vereador.cargo_atual) return false;
+
+            return true;
+        }
+
+        // === CONTROLE DE INTERFACE ===
+
+        function iniciar() {
+            setInterval(() => {
+                document.getElementById('relogio').innerText = new Date().toLocaleTimeString('pt-BR');
+            }, 1000);
+            carregarCargo();
+        }
+
+        function carregarCargo() {
+            estado.votos = [];
+            document.getElementById('tela-votacao').classList.remove('hidden');
+            document.getElementById('tela-resultado').classList.add('hidden');
+            document.getElementById('box-empate').classList.add('hidden');
+            
+            // Atualiza Títulos
+            const nomeCargo = CARGOS[estado.indiceCargo];
+            document.getElementById('cargo-titulo').innerText = nomeCargo;
+            
+            atualizarPlacar();
+            gerarBotoes();
+        }
+
+        function gerarBotoes() {
+            const grid = document.getElementById('grid-candidatos');
+            grid.innerHTML = '';
+            
+            // Aplica os filtros rigorosos
+            const candidatos = VEREADORES.filter(v => isElegivel(v, estado.indiceCargo));
+            
+            candidatos.forEach(v => {
+                const btn = document.createElement('button');
+                btn.className = "card-candidato bg-white border-2 border-slate-200 hover:border-blue-500 hover:bg-blue-50 rounded-xl p-4 flex flex-col items-center justify-center relative group h-32";
+                
+                // Lógica de Clique (Normal ou Shift)
+                btn.onmouseup = (e) => {
+                    if (estado.votos.length >= 9) return;
+                    if (e.shiftKey || e.button === 2) { // Shift ou Botão Direito
+                        votarEmMassa(v);
+                    } else {
+                        registrarVoto(v);
+                    }
+                };
+                // Previne menu de contexto no botão direito para funcionar o "turbo"
+                btn.oncontextmenu = (e) => e.preventDefault();
+
+                const iniciais = v.nome.split(' ').slice(0, 2).map(n=>n[0]).join('');
+                
+                btn.innerHTML = `
+                    <div class="absolute top-2 right-2 text-xs text-slate-300 font-mono">#${v.id}</div>
+                    <div class="w-12 h-12 rounded-full bg-slate-100 text-slate-600 font-bold flex items-center justify-center text-lg mb-2 group-hover:bg-blue-600 group-hover:text-white transition shadow-sm">${iniciais}</div>
+                    <div class="font-bold text-slate-800 leading-none text-center group-hover:text-blue-700">${v.nome.split('(')[0]}</div>
+                    <div class="text-[10px] text-slate-400 mt-1">${v.nome.match(/\((.*?)\)/)[1]}</div>
+                `;
+                grid.appendChild(btn);
+            });
+
+            if (candidatos.length === 0) {
+                grid.innerHTML = '<div class="col-span-4 text-center text-red-500 font-bold p-10 bg-red-50 rounded border border-red-200">Alerta: Nenhum candidato elegível restante.</div>';
+            }
+        }
+
+        // Votar uma vez
+        function registrarVoto(candidato) {
+            if (estado.votos.length >= 9) return;
+            
+            const voto = candidato === 'NULO' 
+                ? { id: 0, nome: "NULO / BRANCO", nasc: "9999-12-31" } 
+                : candidato;
+                
+            estado.votos.push(voto);
+            atualizarPlacar();
+            verificarFimVotacao();
+        }
+
+        // Votar "Turbo" (Preenche o resto da barra)
+        function votarEmMassa(candidato) {
+            const restantes = 9 - estado.votos.length;
+            if (restantes <= 0) return;
+
+            for(let i=0; i < restantes; i++) {
+                estado.votos.push(candidato);
+            }
+            atualizarPlacar();
+            verificarFimVotacao();
+        }
+
+        function desfazerVoto() {
+            if (estado.votos.length > 0) {
+                estado.votos.pop();
+                atualizarPlacar();
+            }
+        }
+
+        function verificarFimVotacao() {
+            if (estado.votos.length === 9) {
+                // Trava a interface visualmente
+                document.getElementById('grid-candidatos').classList.add('opacity-50', 'pointer-events-none');
+                document.getElementById('contador-votos').className = "text-4xl font-black text-green-600 animate-pulse";
+                setTimeout(processarResultado, 600); // Pequeno delay para ver a barra cheia
+            }
+        }
+
+        function atualizarPlacar() {
+            const qtd = estado.votos.length;
+            
+            // Atualiza Barra e Texto
+            document.getElementById('barra-progresso').style.width = `${(qtd/9)*100}%`;
+            document.getElementById('contador-votos').innerHTML = `${qtd}<span class="text-2xl text-slate-300">/9</span>`;
+            
+            // Atualiza Lista Lateral
+            const lista = document.getElementById('placar-lista');
+            lista.innerHTML = '';
+            
+            const contagem = {};
+            estado.votos.forEach(v => contagem[v.nome] = (contagem[v.nome]||0)+1);
+            
+            // Ordena
+            const sorted = Object.entries(contagem).sort((a,b) => b[1] - a[1]);
+            
+            // Alerta de Empate (Visual)
+            const boxEmpate = document.getElementById('box-empate');
+            if (sorted.length > 1 && sorted[0][1] === sorted[1][1]) {
+                boxEmpate.classList.remove('hidden');
+            } else {
+                boxEmpate.classList.add('hidden');
+            }
+
+            sorted.forEach(([nome, votos]) => {
+                const isLider = votos === sorted[0][1];
+                lista.innerHTML += `
+                    <div class="animate-fade-in">
+                        <div class="flex justify-between items-end text-xs font-bold mb-1">
+                            <span class="${isLider?'text-blue-700':'text-slate-500'} truncate">${nome}</span>
+                            <span class="${isLider?'text-blue-700 text-lg':'text-slate-400'}">${votos}</span>
+                        </div>
+                        <div class="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                            <div class="h-full ${isLider?'bg-blue-500':'bg-slate-300'} transition-all duration-300" style="width: ${(votos/9)*100}%"></div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function processarResultado() {
+            // Conta votos
+            const contagem = {};
+            const mapaCandidato = {}; // Mapa para recuperar objeto completo (com ID e Nasc)
+            
+            estado.votos.forEach(v => {
+                contagem[v.nome] = (contagem[v.nome]||0)+1;
+                mapaCandidato[v.nome] = v; 
+            });
+
+            const sorted = Object.entries(contagem).sort((a,b) => b[1] - a[1]);
+            const lider = sorted[0];
+            const empatados = sorted.filter(x => x[1] === lider[1]);
+
+            let vencedorObj = null;
+            let motivo = "";
+            let htmlDesempate = "";
+
+            if (empatados.length === 1) {
+                // Vitória Limpa
+                vencedorObj = mapaCandidato[lider[0]];
+                motivo = "Maioria Simples";
+                document.getElementById('area-detalhe-empate').classList.add('hidden');
+            } else {
+                // Empate - Resolver por Idade
+                const objsEmpatados = empatados
+                    .filter(e => e[0] !== "NULO / BRANCO") // Ignora nulos no desempate de idade
+                    .map(e => mapaCandidato[e[0]]);
+
+                if (objsEmpatados.length === 0) {
+                    // Todos nulos empatados
+                    vencedorObj = { nome: "NINGUÉM (NOVO PLEITO)", id: 0 };
+                    motivo = "Empate de Nulos";
+                } else {
+                    // Ordena por data nascimento (menor timestamp = mais velho)
+                    objsEmpatados.sort((a,b) => new Date(a.nasc) - new Date(b.nasc));
+                    vencedorObj = objsEmpatados[0];
+                    motivo = "Desempate: Mais Idoso (Art. 33)";
+                    
+                    // Gera HTML da explicação
+                    htmlDesempate = objsEmpatados.map((c, i) => `
+                        <div class="flex justify-between ${i===0?'text-green-700 font-bold':'text-slate-400'}">
+                            <span>${i+1}º ${c.nome}</span>
+                            <span class="font-mono text-xs pt-1">${calcularIdade(c.nasc)}</span>
+                        </div>
+                    `).join('');
+                    
+                    document.getElementById('lista-desempate').innerHTML = htmlDesempate;
+                    document.getElementById('area-detalhe-empate').classList.remove('hidden');
+                }
+            }
+
+            // --- PASSO CRÍTICO: ATUALIZAR LISTA NEGRA ---
+            if (vencedorObj.id > 0) { // Se não for Nulo/Branco
+                estado.vencedoresIds.push(vencedorObj.id);
+            }
+
+            // Salva Resultado
+            estado.historicoResultados.push({
+                cargo: CARGOS[estado.indiceCargo],
+                vencedor: vencedorObj.nome,
+                votos: lider[1],
+                motivo: motivo
+            });
+
+            // Atualiza UI de Resultado
+            document.getElementById('res-nome').innerText = vencedorObj.nome;
+            document.getElementById('res-votos').innerText = lider[1];
+            document.getElementById('res-motivo').innerText = motivo;
+            
+            // Mostra Tela Resultado
+            document.getElementById('tela-votacao').classList.add('hidden');
+            document.getElementById('tela-resultado').classList.remove('hidden');
+
+            atualizarHistoricoLateral();
+        }
+
+        function atualizarHistoricoLateral() {
+            const div = document.getElementById('historico-lista');
+            div.innerHTML = '';
+            estado.historicoResultados.forEach(res => {
+                div.innerHTML += `
+                    <div class="bg-slate-50 border-l-4 border-green-500 p-2 rounded text-xs">
+                        <strong class="block text-slate-400 uppercase tracking-tighter">${res.cargo}</strong>
+                        <span class="font-bold text-slate-700">${res.vencedor}</span>
+                    </div>
+                `;
+            });
+        }
+
+        function proximoCargo() {
+            estado.indiceCargo++;
+            
+            // Destrava grid
+            document.getElementById('grid-candidatos').classList.remove('opacity-50', 'pointer-events-none');
+            document.getElementById('contador-votos').className = "text-4xl font-black text-slate-200";
+
+            if (estado.indiceCargo < CARGOS.length) {
+                carregarCargo();
+            } else {
+                gerarRelatorioFinal();
+            }
+        }
+
+        function gerarRelatorioFinal() {
+            document.getElementById('tela-resultado').classList.add('hidden');
+            document.getElementById('painel-principal').classList.add('w-full');
+            document.querySelector('aside').classList.add('hidden');
+            document.getElementById('tela-final').classList.remove('hidden');
+
+            document.getElementById('data-impressao').innerText = `Emitido em ${new Date().toLocaleString('pt-BR')}`;
+            
+            const tbody = document.getElementById('corpo-tabela-ata');
+            tbody.innerHTML = '';
+            estado.historicoResultados.forEach(r => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td class="border border-black p-3">${r.cargo}</td>
+                        <td class="border border-black p-3 font-bold">${r.vencedor}</td>
+                        <td class="border border-black p-3 text-center">${r.votos}</td>
+                        <td class="border border-black p-3">${r.motivo}</td>
+                    </tr>
+                `;
+            });
+        }
+
+        function calcularIdade(dataStr) {
+            const d = new Date(dataStr);
+            const y = d.getFullYear();
+            return `${d.getDate()}/${d.getMonth()+1}/${y}`;
+        }
+
+        // Boot
+        iniciar();
+    </script>
+</body>
+</html>
